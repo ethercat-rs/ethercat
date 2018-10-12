@@ -1,0 +1,11 @@
+[workspace]
+
+[package]
+name = "ethercat-rs"
+version = "0.1.0"
+authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
+edition = "2018"
+
+[dependencies]
+libc = "*"
+ethercat-sys = { path = "ethercat-sys" }
