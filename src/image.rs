@@ -6,12 +6,16 @@ pub trait ProcessImage {
     // configuration APIs
     fn slave_count() -> usize;
     fn get_slave_id(slave: usize) -> SlaveId;
-    fn get_slave_pdos(slave: usize) -> Option<&'static [SyncInfo<'static>]>;
-    fn get_slave_sdos(slave: usize) -> &'static [()];
-    fn get_slave_regs(slave: usize) -> &'static [PdoEntryIndex];
+    fn get_slave_pdos(slave: usize) -> Option<&'static [SyncInfo<'static>]> { None }
+    fn get_slave_sdos(slave: usize) -> &'static [()] { &[] }
+    fn get_slave_regs(slave: usize) -> &'static [(PdoEntryIndex, Offset)];
 
     // data area
-    // fn size() -> usize;
+    fn size() -> usize
+    where Self: Sized
+    {
+        std::mem::size_of::<Self>()
+    }
 
     // cast
     fn cast(data: &mut [u8]) -> &mut Self

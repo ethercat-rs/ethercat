@@ -202,7 +202,7 @@ pub struct SlaveConfig<'m> {
 }
 
 impl<'m> SlaveConfig<'m> {
-    pub fn get_state(&self) -> Result<SlaveConfigState> {
+    pub fn state(&self) -> Result<SlaveConfigState> {
         let mut state = ec::ec_slave_config_state_t::default();
         let mut data = ec::ec_ioctl_sc_state_t { config_index: self.index, state: &mut state };
         ioctl!(self.master, ec::ioctl::SC_STATE, &mut data)?;
@@ -294,7 +294,7 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_ADD_ENTRY, &mut data).map(|_| ())
     }
 
-    pub fn register_pdo_entry(&mut self, index: PdoEntryIndex, domain: DomainHandle) -> Result<Position> {
+    pub fn register_pdo_entry(&mut self, index: PdoEntryIndex, domain: DomainHandle) -> Result<Offset> {
         let mut data = ec::ec_ioctl_reg_pdo_entry_t {
             config_index: self.index,
             entry_index: index.index,
@@ -303,11 +303,11 @@ impl<'m> SlaveConfig<'m> {
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_ENTRY, &mut data)?;
-        Ok(Position { byte: byte as usize, bit: data.bit_position })
+        Ok(Offset { byte: byte as usize, bit: data.bit_position })
     }
 
     pub fn register_pdo_entry_by_position(&mut self, sync_index: SmIndex, pdo_pos: u32, entry_pos: u32,
-                                          domain: DomainHandle) -> Result<Position> {
+                                          domain: DomainHandle) -> Result<Offset> {
         let mut data = ec::ec_ioctl_reg_pdo_pos_t {
             config_index: self.index,
             sync_index: sync_index as u32,
@@ -317,7 +317,7 @@ impl<'m> SlaveConfig<'m> {
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_POS, &mut data)?;
-        Ok(Position { byte: byte as usize, bit: data.bit_position })
+        Ok(Offset { byte: byte as usize, bit: data.bit_position })
     }
 
     pub fn config_dc(&mut self, assign_activate: u16, sync0_cycle_time: u32, sync0_shift_time: i32,

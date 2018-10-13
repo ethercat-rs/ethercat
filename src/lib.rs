@@ -1,4 +1,5 @@
 extern crate libc;
+extern crate time;
 extern crate memmap;
 extern crate ethercat_sys as ec;
 

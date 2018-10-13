@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 libc = "*"
+time = "*"
 memmap = "*"
 ethercat-sys = { path = "ethercat-sys" }
 ethercat-derive = { path = "ethercat-derive" }

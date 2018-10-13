@@ -57,7 +57,9 @@ impl SlaveAddr {
     }
 }
 
-pub struct Position {
+/// Offset of a PDO entry in the domain image.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Offset {
     pub byte: usize,
     pub bit: u32,
 }
@@ -165,9 +167,25 @@ pub struct SyncInfo<'a> {
     pub pdos: &'a [PdoInfo<'a>],
 }
 
+impl SyncInfo<'static> {
+    pub const fn input(index: SmIndex, pdos: &'static [PdoInfo<'static>]) -> Self {
+        SyncInfo { index, direction: SyncDirection::Input, watchdog_mode: WatchdogMode::Default, pdos }
+    }
+
+    pub const fn output(index: SmIndex, pdos: &'static [PdoInfo<'static>]) -> Self {
+        SyncInfo { index, direction: SyncDirection::Output, watchdog_mode: WatchdogMode::Default, pdos }
+    }
+}
+
 pub struct PdoInfo<'a> {
     pub index: PdoIndex,
     pub entries: &'a [PdoEntryInfo],
+}
+
+impl PdoInfo<'static> {
+    pub const fn default(index: PdoIndex) -> PdoInfo<'static> {
+        PdoInfo { index, entries: &[] }
+    }
 }
 
 pub struct PdoEntryInfo {
