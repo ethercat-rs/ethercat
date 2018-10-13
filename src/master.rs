@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::ffi::CStr;
 use std::io::{Error, ErrorKind};
 use std::os::unix::io::AsRawFd;
@@ -38,7 +38,7 @@ pub struct DomainHandle(usize);
 impl Master {
     pub fn reserve(index: MasterIndex) -> Result<Self> {
         let devpath = format!("/dev/EtherCAT{}", index);
-        let file = File::create(&devpath)?;
+        let file = OpenOptions::new().read(true).write(true).open(&devpath)?;
         let mut module_info = ec::ec_ioctl_module_t {
             ioctl_version_magic: 0,
             master_count: 0,
@@ -230,9 +230,11 @@ impl<'m> SlaveConfig<'m> {
             for pdo_info in sm_info.pdos {
                 self.add_pdo_assignment(sm_info.index, pdo_info)?;
 
-                self.clear_pdo_mapping(pdo_info.index)?;
-                for entry in pdo_info.entries {
-                    self.add_pdo_mapping(pdo_info.index, entry)?;
+                if !pdo_info.entries.is_empty() {
+                    self.clear_pdo_mapping(pdo_info.index)?;
+                    for entry in pdo_info.entries {
+                        self.add_pdo_mapping(pdo_info.index, entry)?;
+                    }
                 }
             }
         }
