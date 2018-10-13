@@ -4,6 +4,13 @@ use crate::ec;
 pub type Error = io::Error;
 pub type Result<T> = io::Result<T>;
 
+pub type MasterIndex = u32;
+pub type DomainIndex = u32;
+pub type SlaveConfigIndex = u32;
+
+#[derive(Clone, Copy)]
+pub struct DomainHandle(pub(crate) usize);
+
 
 /// An EtherCAT slave identification, consisting of vendor ID and product code.
 #[derive(Debug, Clone, Copy)]
@@ -13,9 +20,14 @@ pub struct SlaveId {
 }
 
 impl SlaveId {
-    #[allow(non_snake_case)]
+    #![allow(non_snake_case)]
+
     pub fn EL(nr: u32) -> SlaveId {
         SlaveId { vendor_id: 0x2, product_code: (nr << 16) | 0x3052 }
+    }
+
+    pub fn EK(nr: u32) -> SlaveId {
+        SlaveId { vendor_id: 0x2, product_code: (nr << 16) | 0x2c52 }
     }
 }
 

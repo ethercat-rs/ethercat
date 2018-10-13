@@ -14,10 +14,6 @@ macro_rules! ioctl {
     }}
 }
 
-pub type MasterIndex = u32;
-pub type DomainIndex = u32;
-pub type SlaveConfigIndex = u32;
-
 /// An EtherCAT master.
 pub struct Master {
     file: File,
@@ -29,9 +25,6 @@ pub struct Domain<'m> {
     master: &'m Master,
     index: DomainIndex,
 }
-
-#[derive(Clone, Copy)]
-pub struct DomainHandle(usize);
 
 impl Master {
     pub fn reserve(index: MasterIndex) -> Result<Self> {

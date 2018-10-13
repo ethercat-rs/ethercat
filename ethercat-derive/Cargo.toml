@@ -1,0 +1,13 @@
+[package]
+name = "ethercat-derive"
+version = "0.1.0"
+authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "*"
+syn = "*"
+proc-macro2 = "*"

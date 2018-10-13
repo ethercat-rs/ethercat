@@ -10,3 +10,4 @@ edition = "2018"
 libc = "*"
 memmap = "*"
 ethercat-sys = { path = "ethercat-sys" }
+ethercat-derive = { path = "ethercat-derive" }

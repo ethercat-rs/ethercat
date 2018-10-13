@@ -1,61 +1,50 @@
 extern crate ethercat;
 
-use ethercat::Master;
+use ethercat::plc::PlcBuilder;
+use ethercat::image::ProcessImage;
 use ethercat::types::*;
 
-const SYNC_1859: &[SyncInfo] = &[
-    SyncInfo { index: 0,
-               direction: SyncDirection::Output,
-               watchdog_mode: WatchdogMode::Default,
-               pdos: &[
-                   PdoInfo { index: 0x1608, entries: &[] },
-                   PdoInfo { index: 0x1609, entries: &[] },
-                   PdoInfo { index: 0x160a, entries: &[] },
-                   PdoInfo { index: 0x160b, entries: &[] },
-                   PdoInfo { index: 0x160c, entries: &[] },
-                   PdoInfo { index: 0x160d, entries: &[] },
-                   PdoInfo { index: 0x160e, entries: &[] },
-                   PdoInfo { index: 0x160f, entries: &[] },
-               ] },
-    SyncInfo { index: 1,
-               direction: SyncDirection::Input,
-               watchdog_mode: WatchdogMode::Default,
-               pdos: &[
-                   PdoInfo { index: 0x1a00, entries: &[] },
-                   PdoInfo { index: 0x1a01, entries: &[] },
-                   PdoInfo { index: 0x1a02, entries: &[] },
-                   PdoInfo { index: 0x1a03, entries: &[] },
-                   PdoInfo { index: 0x1a04, entries: &[] },
-                   PdoInfo { index: 0x1a05, entries: &[] },
-                   PdoInfo { index: 0x1a06, entries: &[] },
-                   PdoInfo { index: 0x1a07, entries: &[] },
-               ] },
-];
+#[repr(packed)]
+struct Simple {
+    dig_in: u8,
+    dig_out: u8,
+}
 
+impl ProcessImage for Simple {
+    fn slave_count() -> usize { 2 }
+    fn get_slave_id(slave: usize) -> SlaveId {
+        match slave {
+            0 => SlaveId::EK(1100),
+            1 => SlaveId::EL(1859),
+            _ => unreachable!()
+        }
+    }
+    fn get_slave_pdos(_: usize) -> Option<&'static [SyncInfo<'static>]> {
+        None
+    }
+    fn get_slave_sdos(_: usize) -> &'static [()] {
+        &[]
+    }
+    fn get_slave_regs(slave: usize) -> &'static [PdoEntryIndex] {
+        match slave {
+            0 => &[],
+            1 => &[
+                PdoEntryIndex { index: 0x6000, subindex: 1},
+                PdoEntryIndex { index: 0x7080, subindex: 1},
+            ],
+            _ => unreachable!()
+        }
+    }
+}
 
 fn main() {
-    let mut master = Master::reserve(0).unwrap();
-    let domain = master.create_domain().unwrap();
-    let mut sc1 = master.configure_slave(SlaveAddr::ByPos(1), SlaveId::EL(1859)).unwrap();
-    sc1.config_pdos(SYNC_1859).unwrap();
-    let ix_in = sc1.register_pdo_entry(PdoEntryIndex { index: 0x6010, subindex: 1}, domain).unwrap();
-    let ix_out = sc1.register_pdo_entry(PdoEntryIndex { index: 0x7090, subindex: 1}, domain).unwrap();
-
-    master.activate().unwrap();
-    // XXX setprio -19, mlockall
+    let mut plc = PlcBuilder::new().build::<Simple>().unwrap();
 
     let mut blink = 0x6;
-    loop {
+    plc.run(|data| {
         std::thread::sleep(std::time::Duration::from_millis(10));
-        master.receive().unwrap();
-        master.domain(domain).process().unwrap();
-        let data = master.domain_data(domain);
-
-        println!("in: {}", data[ix_in.byte]);
+        println!("in: {}", data.dig_in);
         blink = if blink == 0x6 { 0x9 } else { 0x6 };
-        data[ix_out.byte] = blink;
-
-        master.domain(domain).queue().unwrap();
-        master.send().unwrap();
-    }
+        data.dig_out = blink;
+    });
 }
