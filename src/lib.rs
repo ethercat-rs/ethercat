@@ -8,11 +8,15 @@ extern crate byteorder;
 extern crate crossbeam_channel;
 extern crate ethercat_sys as ec;
 
-pub mod master;
+mod master;
+mod image;
 pub mod types;
-pub mod image;
-pub mod plc;
-pub mod server;
+mod plc;
+mod server;
+
+pub mod beckhoff;
 
 pub use self::types::Result;
 pub use self::master::{Master, Domain, SlaveConfig};
+pub use self::image::{ExternImage, ProcessImage};
+pub use self::plc::{Plc, PlcBuilder};

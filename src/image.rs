@@ -4,12 +4,11 @@ use crate::types::*;
 
 pub trait ProcessImage {
     // configuration APIs
-    fn slave_count() -> usize;
-    fn get_slave_id(slave: usize) -> SlaveId;
-    #[allow(unused_variables)]
-    fn get_slave_pdos(slave: usize) -> Option<&'static [SyncInfo<'static>]> { None }
-    fn get_slave_sdos(_slave: usize) -> &'static [()] { &[] }
-    fn get_slave_regs(slave: usize) -> &'static [(PdoEntryIndex, Offset)];
+    const SLAVE_COUNT: usize;
+    fn get_slave_ids() -> Vec<SlaveId>;
+    fn get_slave_pdos() -> Vec<Option<Vec<SyncInfo<'static>>>> { vec![None] }
+    fn get_slave_regs() -> Vec<Vec<(PdoEntryIndex, Offset)>> { vec![vec![]] }
+    fn get_slave_sdos() -> Vec<Vec<()>> { vec![vec![]] }
 
     // data area
     fn size() -> usize

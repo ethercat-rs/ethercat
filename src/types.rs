@@ -19,6 +19,8 @@ pub struct SlaveId {
     pub product_code: u32,
 }
 
+
+// XXX: go away after autogen
 impl SlaveId {
     #![allow(non_snake_case)]
 
@@ -58,7 +60,7 @@ impl SlaveAddr {
 }
 
 /// Offset of a PDO entry in the domain image.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Offset {
     pub byte: usize,
     pub bit: u32,

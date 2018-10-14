@@ -54,20 +54,33 @@ impl PlcBuilder {
         let mut master = Master::reserve(self.master_id.unwrap_or(0))?;
         let domain = master.create_domain()?;
 
-        for i in 0..P::slave_count() {
-            let mut config = master.configure_slave(SlaveAddr::ByPos(i as u16),
-                                                    P::get_slave_id(i))?;
-            if let Some(pdos) = P::get_slave_pdos(i) {
-                config.config_pdos(pdos)?;
+        let slave_ids = P::get_slave_ids();
+        let slave_pdos = P::get_slave_pdos();
+        let slave_regs = P::get_slave_regs();
+        for (i, ((id, pdos), regs)) in slave_ids.into_iter().zip(slave_pdos).zip(slave_regs).enumerate() {
+            let mut config = master.configure_slave(SlaveAddr::ByPos(i as u16), id)?;
+            if let Some(pdos) = pdos {
+                config.config_pdos(&pdos)?;
             }
-            // XXX: SDOs etc.
-            for (entry, expected_position) in P::get_slave_regs(i) {
-                let pos = config.register_pdo_entry(*entry, domain)?;
-                if &pos != expected_position {
-                    panic!("slave {}: {:?} != {:?}", i, pos, expected_position);
+            let mut first_byte = 0;
+            for (j, (entry, mut expected_position)) in regs.into_iter().enumerate() {
+                let pos = config.register_pdo_entry(entry, domain)?;
+                if j == 0 {
+                    if pos.bit != 0 {
+                        panic!("first PDO of slave {} not byte-aligned", i);
+                    }
+                    first_byte = pos.byte;
+                } else {
+                    expected_position.byte += first_byte;
+                    if pos != expected_position {
+                        panic!("slave {} pdo {}: {:?} != {:?}", i, j, pos, expected_position);
+                    }
                 }
             }
+            // XXX: SDOs etc.
         }
+
+        // XXX: check actual slaves against configuration
 
         let domain_size = master.domain(domain).size()?;
         if domain_size != P::size() {
@@ -139,6 +152,7 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
         self.master.receive()?;
         self.master.domain(self.domain).process()?;
 
+        // XXX: check working counters periodically, etc.
         // println!("master state: {:?}", self.master.state());
         // println!("domain state: {:?}", self.master.domain(self.domain).state());
 
