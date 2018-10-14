@@ -14,14 +14,20 @@ use crate::server::{Server, Request, Response};
 
 #[derive(Default)]
 pub struct PlcBuilder {
+    name: String,
     master_id: Option<u32>,
     cycle_freq: Option<u32>,
-    server: Option<String>,
+    server_addr: Option<String>,
+    logfile_base: Option<String>,
+    debug_logging: bool,
 }
 
 impl PlcBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            .. Self::default()
+        }
     }
 
     pub fn master_id(mut self, id: u32) -> Self {
@@ -34,16 +40,21 @@ impl PlcBuilder {
         self
     }
 
-    pub fn server(mut self, addr: impl Into<String>) -> Self {
-        self.server = Some(addr.into());
+    pub fn with_server(mut self, addr: impl Into<String>) -> Self {
+        self.server_addr = Some(addr.into());
+        self
+    }
+
+    pub fn logging_cfg(mut self, logfile_base: Option<String>, debug_logging: bool) -> Self {
+        self.logfile_base = logfile_base;
+        self.debug_logging = debug_logging;
         self
     }
 
     pub fn build<P: ProcessImage, E: ExternImage>(self) -> Result<Plc<P, E>> {
-        // XXX options!
-        mlzlog::init::<&str>(None, "plc", false, true, true)?;
+        mlzlog::init(self.logfile_base, &self.name, false, self.debug_logging, true)?;
 
-        let channels = if let Some(addr) = self.server {
+        let channels = if let Some(addr) = self.server_addr {
             let (srv, r, w) = Server::new();
             srv.start(&addr)?;
             Some((r, w))

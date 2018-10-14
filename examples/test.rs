@@ -35,9 +35,10 @@ impl Default for Extern {
 }
 
 fn main() {
-    let mut plc = PlcBuilder::new()
+    let mut plc = PlcBuilder::new("plc")
         .cycle_freq(100)
-        .server("0.0.0.0:5020")
+        .with_server("0.0.0.0:5020")
+        .logging_cfg(None, true)
         .build::<Image, Extern>().unwrap();
 
     let mut blink = 6u8;
