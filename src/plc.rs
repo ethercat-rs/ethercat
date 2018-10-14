@@ -119,6 +119,8 @@ pub struct Plc<P, E> {
     _types: (PhantomData<P>, PhantomData<E>),
 }
 
+const BASE: usize = 0x3000;
+
 impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
     pub fn run<F>(&mut self, mut cycle_fn: F)
     where F: FnMut(&mut P, &mut E)
@@ -137,19 +139,21 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
                     let data = ext.cast();
                     let resp = match req {
                         Request::Read(tid, fc, addr, count) => {
-                            if addr + count >= E::size()/2 {
+                            if addr < BASE || addr + count - BASE > E::size()/2 {
                                 Response::Error(tid, fc, 2)
                             } else {
+                                let offset = addr - BASE;
                                 let mut values = vec![0; count];
-                                NE::read_u16_into(&data[addr*2..addr*2+count*2], &mut values);
+                                NE::read_u16_into(&data[offset*2..offset*2+count*2], &mut values);
                                 Response::Ok(tid, fc, addr, values)
                             }
                         }
                         Request::Write(tid, fc, addr, values) => {
-                            if addr + values.len() >= E::size()/2 {
+                            if addr < BASE || addr + values.len() - BASE > E::size()/2 {
                                 Response::Error(tid, fc, 2)
                             } else {
-                                NE::write_u16_into(&values, &mut data[addr*2..addr*2+values.len()*2]);
+                                let offset = addr - BASE;
+                                NE::write_u16_into(&values, &mut data[offset*2..offset*2+values.len()*2]);
                                 Response::Ok(tid, fc, addr, values)
                             }
                         }
@@ -160,7 +164,8 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
             }
 
             epoch += self.sleep;
-            thread::sleep(Duration::from_nanos(epoch - precise_time_ns()));
+            let sleep_ns = epoch - precise_time_ns();
+            thread::sleep(Duration::from_nanos(sleep_ns));
         }
     }
 
