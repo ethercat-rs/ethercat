@@ -1,11 +1,22 @@
 extern crate ethercat;
 
 use ethercat::plc::PlcBuilder;
-use ethercat::image::ProcessImage;
+use ethercat::image::{ProcessImage, ExternImage};
 use ethercat::types::*;
 
-#[repr(packed)]
-struct Simple {
+#[repr(C, packed)]
+#[derive(Default)]
+struct Extern {
+    magic: f32,
+    offset: u16,
+    cycle: i16,
+    ana_in: i16,
+}
+
+impl ExternImage for Extern {}
+
+#[repr(C, packed)]
+struct Image {
     dig_in: u8,
     dig_out: u8,
     ana_in_1_sta: u16,
@@ -21,7 +32,7 @@ const EL3104_SYNCS: &[SyncInfo] = &[SyncInfo::input(3, &[
     PdoInfo::default(0x1a02),
 ])];
 
-impl ProcessImage for Simple {
+impl ProcessImage for Image {
     fn slave_count() -> usize { 4 }
     fn get_slave_id(slave: usize) -> SlaveId {
         match slave {
@@ -63,12 +74,16 @@ impl ProcessImage for Simple {
 fn main() {
     let mut plc = PlcBuilder::new()
         .cycle_freq(100)
-        .build::<Simple>().unwrap();
+        .server("0.0.0.0:5020")
+        .build::<Image, Extern>().unwrap();
 
     let mut blink = 6u8;
     let mut cycle = 0;
-    plc.run(|data| {
-        println!("in: {} {}", data.dig_in, data.ana_in_1_val);
+    plc.run(|data, ext| {
+        ext.magic = 2015.02;
+        ext.offset = 10;
+        ext.cycle = cycle;
+        ext.ana_in = data.ana_in_1_val; // cannot borrow
         blink = if blink == 6 { 9 } else { 6 };
         // blink = 1 - blink;
         data.dig_out = blink;

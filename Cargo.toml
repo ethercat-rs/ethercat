@@ -7,8 +7,12 @@ authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
 [dependencies]
+log = "*"
 libc = "*"
 time = "*"
+mlzlog = "*"
 memmap = "*"
+byteorder = "*"
+crossbeam-channel = "*"
 ethercat-sys = { path = "ethercat-sys" }
 ethercat-derive = { path = "ethercat-derive" }
