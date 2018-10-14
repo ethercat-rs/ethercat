@@ -125,15 +125,22 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
                     debug!("PLC got request from {}: {:?}", id, req);
                     let data = ext.cast();
                     let resp = match req {
-                        // XXX: check for validity
                         Request::Read(tid, fc, addr, count) => {
-                            let mut values = vec![0; count];
-                            NE::read_u16_into(&data[addr*2..addr*2+count*2], &mut values);
-                            Response::Ok(tid, fc, addr, values)
+                            if addr + count >= E::size()/2 {
+                                Response::Error(tid, fc, 2)
+                            } else {
+                                let mut values = vec![0; count];
+                                NE::read_u16_into(&data[addr*2..addr*2+count*2], &mut values);
+                                Response::Ok(tid, fc, addr, values)
+                            }
                         }
                         Request::Write(tid, fc, addr, values) => {
-                            NE::write_u16_into(&values, &mut data[addr*2..addr*2+values.len()*2]);
-                            Response::Ok(tid, fc, addr, values)
+                            if addr + values.len() >= E::size()/2 {
+                                Response::Error(tid, fc, 2)
+                            } else {
+                                NE::write_u16_into(&values, &mut data[addr*2..addr*2+values.len()*2]);
+                                Response::Ok(tid, fc, addr, values)
+                            }
                         }
                     };
                     debug!("PLC response: {:?}", resp);

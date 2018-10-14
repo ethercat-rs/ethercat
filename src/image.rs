@@ -10,27 +10,23 @@ pub trait ProcessImage {
     fn get_slave_regs() -> Vec<Vec<(PdoEntryIndex, Offset)>> { vec![vec![]] }
     fn get_slave_sdos() -> Vec<Vec<()>> { vec![vec![]] }
 
-    // data area
-    fn size() -> usize
-    where Self: Sized
-    {
+    fn size() -> usize where Self: Sized {
         std::mem::size_of::<Self>()
     }
 
-    // cast
-    fn cast(data: &mut [u8]) -> &mut Self
-    where Self: Sized
-    {
+    fn cast(data: &mut [u8]) -> &mut Self where Self: Sized {
         unsafe { std::mem::transmute(data.as_mut_ptr()) }
     }
 }
 
 pub trait ExternImage : Default {
-    fn cast(&mut self) -> &mut [u8]
-    where Self: Sized
-    {
+    fn size() -> usize where Self: Sized {
+        std::mem::size_of::<Self>()
+    }
+
+    fn cast(&mut self) -> &mut [u8] where Self: Sized {
         unsafe {
-            std::slice::from_raw_parts_mut(self as *mut _ as *mut u8, std::mem::size_of::<Self>())
+            std::slice::from_raw_parts_mut(self as *mut _ as *mut u8, Self::size())
         }
     }
 }
