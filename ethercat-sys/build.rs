@@ -4,12 +4,13 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rustc-link-lib=ethercat");
-    println!("cargo:rustc-link-search=native=/opt/etherlab/lib");
+    let path = env::var("ETHERCAT_PATH")
+        .expect("Please set the ETHERCAT_PATH env var to the location of \
+                 a checkout of the Ethercat master after running configure");
 
     let bindings = bindgen::Builder::default()
-        .header("/home/gbr/devel/ext/ethercat-hg/lib/ioctl.h")
-        .clang_arg("-I/home/gbr/devel/ext/ethercat-hg")
+        .header(format!("{}/lib/ioctl.h", path))
+        .clang_arg(format!("-I{}", path))
         .derive_default(true)
         .derive_debug(false)
         .prepend_enum_name(false)
