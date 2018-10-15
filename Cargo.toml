@@ -1,19 +1,14 @@
 [workspace]
 
 [package]
-name = "ethercat-plc"
+name = "ethercat-testplc"
 version = "0.1.0"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
 [dependencies]
-log = "0.4"
-libc = "0.2"
-time = "0.1"
-mlzlog = "0.4"
 byteorder = "1.2"
-crossbeam-channel = "0.2"
-
 ethercat = { path = "ethercat" }
+ethercat-plc = { path = "ethercat-plc" }
 ethercat-xml = { path = "ethercat-xml" }
 ethercat-derive = { path = "ethercat-derive" }
