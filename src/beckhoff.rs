@@ -1,5 +1,5 @@
+use ethercat::*;
 use crate::image::ProcessImage;
-use crate::types::*;
 
 #[repr(C, packed)]
 pub struct EK1100 {}

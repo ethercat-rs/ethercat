@@ -1,11 +1,11 @@
-extern crate ethercat;
+extern crate ethercat_plc;
 #[macro_use]
 extern crate ethercat_derive;
 extern crate byteorder;
 
 use byteorder::{ByteOrder, NativeEndian as NE};
-use ethercat::{PlcBuilder, ProcessImage, ExternImage};
-use ethercat::beckhoff::*;
+use ethercat_plc::{PlcBuilder, ProcessImage, ExternImage};
+use ethercat_plc::beckhoff::*;
 
 const PLC_NAME:     &str = "testplc";
 const PLC_VERSION:  &str = "v0.0.5beta";

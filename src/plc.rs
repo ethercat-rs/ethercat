@@ -7,9 +7,9 @@ use byteorder::{ByteOrder, NativeEndian as NE};
 use crossbeam_channel::{Sender, Receiver};
 use mlzlog;
 
-use crate::{Result, Master};
+use ethercat::*;
+
 use crate::image::{ProcessImage, ExternImage};
-use crate::types::*;
 use crate::server::{Server, Request, Response};
 
 #[derive(Default)]

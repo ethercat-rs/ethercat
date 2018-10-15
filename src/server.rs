@@ -6,7 +6,7 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use byteorder::{ByteOrder, BE};
 use crossbeam_channel::{unbounded, Sender, Receiver};
-use crate::Result;
+use ethercat::Result;
 
 
 // XXX: refactor

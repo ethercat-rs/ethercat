@@ -40,13 +40,13 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl ProcessImage for #ident {
             const SLAVE_COUNT: usize = #(#slave_count)+*;
-            fn get_slave_ids() -> Vec<ethercat::types::SlaveId> {
+            fn get_slave_ids() -> Vec<ethercat::SlaveId> {
                 let mut res = vec![]; #(#slave_ids)* res
             }
-            fn get_slave_pdos() -> Vec<Option<Vec<ethercat::types::SyncInfo<'static>>>> {
+            fn get_slave_pdos() -> Vec<Option<Vec<ethercat::SyncInfo<'static>>>> {
                 let mut res = vec![]; #(#slave_pdos)* res
             }
-            fn get_slave_regs() -> Vec<Vec<(ethercat::types::PdoEntryIndex, ethercat::types::Offset)>> {
+            fn get_slave_regs() -> Vec<Vec<(ethercat::PdoEntryIndex, ethercat::Offset)>> {
                 let mut res = vec![]; #(#slave_regs)* res
             }
             fn get_slave_sdos() -> Vec<Vec<()>> {

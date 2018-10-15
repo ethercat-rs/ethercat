@@ -1,6 +1,6 @@
 //! Tools to create a typesafe process image matching with possible slave PDOs.
 
-use crate::types::*;
+use ethercat::*;
 
 pub trait ProcessImage {
     // configuration APIs
