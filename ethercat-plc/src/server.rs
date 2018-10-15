@@ -1,15 +1,13 @@
 //! Modbus server allowing access to the PLC "memory" variables.
 
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::io::{Result, Read, Write, ErrorKind};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use byteorder::{ByteOrder, BE};
 use crossbeam_channel::{unbounded, Sender, Receiver};
-use ethercat::Result;
 
 
-// XXX: refactor
 #[derive(Debug)]
 pub(crate) struct Request {
     pub hid: usize,
@@ -54,7 +52,7 @@ impl Handler {
 
     fn sender(mut client: TcpStream, replies: Receiver<Response>) {
         let mut buf = [0u8; 256];
-        mlzlog::set_thread_prefix(format!("{} > ", client.peer_addr().unwrap()));
+        mlzlog::set_thread_prefix(format!("{} sender: ", client.peer_addr().unwrap()));
 
         for response in replies {
             debug!("sending response: {:?}", response);
@@ -91,7 +89,7 @@ impl Handler {
             };
             BE::write_u16(&mut buf[4..], (count - 6) as u16);
             if let Err(err) = client.write_all(&buf[..count]) {
-                warn!("write error in sender: {}", err);
+                warn!("write error: {}", err);
                 break;
             }
         }
@@ -102,11 +100,14 @@ impl Handler {
         let mut bodybuf = [0u8; 250];  // max frame size is 255
         let mut errbuf  = [0, 0, 0, 0, 0, 9, 0, 0, 0];
 
-        mlzlog::set_thread_prefix(format!("{} < ", self.client.peer_addr().unwrap()));
+        mlzlog::set_thread_prefix(format!("{}: ", self.client.peer_addr().unwrap()));
+        info!("connection accepted");
 
         'outer: loop {
             if let Err(err) = self.client.read_exact(&mut headbuf) {
-                warn!("error reading request head: {}", err);
+                if err.kind() != ErrorKind::UnexpectedEof {
+                    warn!("error reading request head: {}", err);
+                }
                 break;
             }
             if &headbuf[2..4] != &[0, 0] {
@@ -173,7 +174,7 @@ impl Handler {
             debug!("got request: {:?}", req);
             self.requests.send(HandlerEvent::Request(req));
         }
-        info!("handler is finished");
+        info!("connection closed");
         self.requests.send(HandlerEvent::Finished(self.hid));
     }
 }
@@ -187,13 +188,12 @@ impl Server {
 
     /// Listen for connections on the TCP socket and spawn handlers for it.
     fn tcp_listener(tcp_sock: TcpListener, handler_sender: Sender<HandlerEvent>) {
-        mlzlog::set_thread_prefix("Server: ".into());
+        mlzlog::set_thread_prefix("Modbus: ".into());
 
-        info!("tcp listener started");
+        info!("listening on {}", tcp_sock.local_addr().unwrap());
         let mut handler_id = 0;
 
-        while let Ok((stream, addr)) = tcp_sock.accept() {
-            info!("new client connected: {}", addr);
+        while let Ok((stream, _)) = tcp_sock.accept() {
             let (w_rep, r_rep) = unbounded();
             let w_req = handler_sender.clone();
             handler_id += 1;

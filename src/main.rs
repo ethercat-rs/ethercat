@@ -1,11 +1,10 @@
 extern crate ethercat_plc;
 #[macro_use]
 extern crate ethercat_derive;
-extern crate byteorder;
 
-use byteorder::{ByteOrder, NativeEndian as NE};
 use ethercat_plc::{PlcBuilder, ProcessImage, ExternImage};
 use ethercat_plc::beckhoff::*;
+use ethercat_plc::mlz_spec::*;
 
 const PLC_NAME:     &str = "testplc";
 const PLC_VERSION:  &str = "v0.0.5beta";
@@ -15,14 +14,6 @@ const PLC_AUTHOR_2: &str = "won't really fit into the indexer";
 const INDEXER_SIZE: u16 = std::mem::size_of::<Indexer>() as u16;
 const INDEXER_OFFS: u16 = 6;
 
-
-const RESET: u16 = 0x0000;
-const IDLE:  u16 = 0x1000;
-const WARN:  u16 = 0x3000;
-const START: u16 = 0x5000;
-const BUSY:  u16 = 0x6000;
-const STOP:  u16 = 0x7000;
-const ERROR: u16 = 0x8000;
 
 #[repr(C, packed)]
 #[derive(ProcessImage)]
@@ -41,31 +32,13 @@ struct Indexer {
 }
 
 #[repr(C)]
-#[derive(Default)]
-struct DiscOut {
-    value:  i16,
-    target: i16,
-    status: u16,
-}
-
-#[repr(C)]
-#[derive(Default)]
-struct FlatOut1 {
-    value:  f32,
-    target: f32,
-    status: u16,
-    aux:    u16,
-    param1: f32,
-}
-
-#[repr(C)]
 #[derive(Default, ExternImage)]
 struct Extern {
     magic: f32,
     offset: u16,
     indexer: Indexer,
-    if_blink: DiscOut,
-    if_magnet: FlatOut1,
+    if_blink: DiscreteOutput,
+    if_magnet: FlatOutput1,
 }
 
 #[derive(Default)]
@@ -100,26 +73,6 @@ struct DeviceInfo {
     absmin: f32,
 }
 
-fn copy_string(dst: &mut [u16], src: &str) {
-    let mut nbytes = src.len().min(dst.len() * 2);
-    let mut src_vec;
-    let src = if nbytes % 2 == 1 {
-        src_vec = src.to_string();
-        src_vec.push('\0');
-        nbytes += 1;
-        &src_vec
-    } else {
-        src
-    };
-    NE::read_u16_into(&src[..nbytes].as_bytes(), &mut dst[..nbytes/2])
-}
-
-fn copy_float(dst: &mut [u16], f: f32) {
-    let mut buf = [0u8; 4];
-    NE::write_f32(&mut buf, f);
-    NE::read_u16_into(&buf, &mut dst[..2]);
-}
-
 fn indexer(ext: &mut Extern, globals: &mut Globals) {
     if !globals.indexer_is_init {
         let mut calc_offset = INDEXER_OFFS + INDEXER_SIZE;
@@ -143,7 +96,7 @@ fn indexer(ext: &mut Extern, globals: &mut Globals) {
         globals.indexer_is_init = true;
     }
 
-    ext.magic = 2015.02;
+    ext.magic = MAGIC;
     ext.offset = INDEXER_OFFS;
 
     let devnum = ext.indexer.request as usize & 0xff;
@@ -198,7 +151,7 @@ fn indexer(ext: &mut Extern, globals: &mut Globals) {
     globals.cycle = globals.cycle.wrapping_add(1);
 }
 
-fn fb_blink(data: &mut EL1859, iface: &mut DiscOut) {
+fn fb_blink(data: &mut EL1859, iface: &mut DiscreteOutput) {
     match iface.status & 0xf000 {
         RESET => {
             data.output = 0;
@@ -218,7 +171,8 @@ fn fb_blink(data: &mut EL1859, iface: &mut DiscOut) {
     iface.value = data.input as i16;
 }
 
-fn fb_magnet(inp: &mut EL3104, outp: &mut EL4132, iface: &mut FlatOut1, vars: &mut MagnetVars) {
+fn fb_magnet(inp: &mut EL3104, outp: &mut EL4132,
+             iface: &mut FlatOutput1, vars: &mut MagnetVars) {
     iface.target = iface.target.max(-15.0).min(15.0);
     iface.param1 = iface.param1.max(-10.0).min(10.0);
 
@@ -275,19 +229,19 @@ fn main() {
         .logging_cfg(None, false)
         .build::<Image, Extern>().unwrap();
 
-    let mut global_instance = Globals::default();
-    global_instance.devices = vec![
+    let mut globals = Globals::default();
+    globals.devices = vec![
         DeviceInfo { typcode: 0x1E03, name: "Blink", offset: 42, .. Default::default() },
         DeviceInfo { typcode: 0x3008, name: "Magnet", unit: 0x0007,
                      params: [0x3c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                      aux: &["output disabled", "emergency shutdown"],
                      absmin: -15.0, absmax: 15.0, .. Default::default() },
     ];
-    let globals = &mut global_instance;
 
     plc.run(|data, ext| {
-        indexer(ext, globals);
+        indexer(ext, &mut globals);
         fb_blink(&mut data.digital, &mut ext.if_blink);
-        fb_magnet(&mut data.ana_in, &mut data.ana_out, &mut ext.if_magnet, &mut globals.v_magnet);
+        fb_magnet(&mut data.ana_in, &mut data.ana_out, &mut ext.if_magnet,
+                  &mut globals.v_magnet);
     });
 }

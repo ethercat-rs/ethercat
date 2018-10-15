@@ -12,6 +12,7 @@ mod plc;
 mod server;
 
 pub mod beckhoff;
+pub mod mlz_spec;
 
 pub use self::image::{ExternImage, ProcessImage};
 pub use self::plc::{Plc, PlcBuilder};
