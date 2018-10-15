@@ -4,5 +4,11 @@ version = "0.1.0"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
+[dependencies]
+ethercat = { path = "../ethercat" }
+ethercat-plc = { path = "../ethercat-plc" }
+
 [build-dependencies]
-xml-rs = "0.8"
+heck = "0.3"
+rayon = "1.0"
+quick-xml = "0.13"
