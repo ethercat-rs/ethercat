@@ -11,9 +11,12 @@ use crate::Result;
 
 // XXX: refactor
 #[derive(Debug)]
-pub enum Request {
-    Read(u16, u8, usize, usize),
-    Write(u16, u8, usize, Vec<u16>),
+pub struct Request {
+    pub tid: u16,
+    pub fc: u8,
+    pub addr: usize,
+    pub count: usize,
+    pub write: Option<Vec<u16>>,
 }
 
 #[derive(Debug)]
@@ -124,7 +127,7 @@ impl Handler {
                     }
                     let addr = BE::read_u16(&bodybuf[..2]) as usize;
                     let count = BE::read_u16(&bodybuf[2..4]) as usize;
-                    Request::Read(tid, fc, addr, count)
+                    Request { tid, fc, addr, count, write: None }
                 }
                 6 => {
                     if data_len != 6 {
@@ -133,7 +136,7 @@ impl Handler {
                     }
                     let addr = BE::read_u16(&bodybuf[..2]) as usize;
                     let value = BE::read_u16(&bodybuf[2..4]);
-                    Request::Write(tid, fc, addr, vec![value])
+                    Request { tid, fc, addr, count: 1, write: Some(vec![value]) }
                 }
                 16 => {
                     if data_len < 7 {
@@ -148,7 +151,7 @@ impl Handler {
                     }
                     let mut values = vec![0; bytecount / 2];
                     BE::read_u16_into(&bodybuf[5..5+bytecount], &mut values);
-                    Request::Write(tid, fc, addr, values)
+                    Request { tid, fc, addr, count: values.len(), write: Some(values) }
                 }
                 _ => {
                     warn!("unknown function code {}", fc);

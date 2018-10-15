@@ -126,36 +126,32 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
     where F: FnMut(&mut P, &mut E)
     {
         let mut ext = E::default();
-        let mut epoch = precise_time_ns();
+        let mut cycle_start = precise_time_ns();
+
         loop {
+            // process data exchange + logic
             if let Err(e) = self.single_cycle(&mut cycle_fn, &mut ext) {
                 // XXX: logging unconditionally here is bad, could repeat endlessly
                 warn!("error in cycle: {}", e);
             }
 
+            // external data exchange via modbus
             if let Some((r, w)) = self.server.as_mut() {
                 while let Some((id, req)) = r.try_recv() {
                     debug!("PLC got request from {}: {:?}", id, req);
                     let data = ext.cast();
-                    let resp = match req {
-                        Request::Read(tid, fc, addr, count) => {
-                            if addr < BASE || addr + count - BASE > E::size()/2 {
-                                Response::Error(tid, fc, 2)
-                            } else {
-                                let offset = addr - BASE;
-                                let mut values = vec![0; count];
-                                NE::read_u16_into(&data[offset*2..offset*2+count*2], &mut values);
-                                Response::Ok(tid, fc, addr, values)
-                            }
-                        }
-                        Request::Write(tid, fc, addr, values) => {
-                            if addr < BASE || addr + values.len() - BASE > E::size()/2 {
-                                Response::Error(tid, fc, 2)
-                            } else {
-                                let offset = addr - BASE;
-                                NE::write_u16_into(&values, &mut data[offset*2..offset*2+values.len()*2]);
-                                Response::Ok(tid, fc, addr, values)
-                            }
+                    let resp = if req.addr < BASE || req.addr + req.count > BASE + E::size()/2 {
+                        Response::Error(req.tid, req.fc, 2)
+                    } else {
+                        let from = 2 * (req.addr - BASE);
+                        let to = from + 2 * req.count;
+                        if let Some(values) = req.write {
+                            NE::write_u16_into(&values, &mut data[from..to]);
+                            Response::Ok(req.tid, req.fc, req.addr, values)
+                        } else {
+                            let mut values = vec![0; req.count];
+                            NE::read_u16_into(&data[from..to], &mut values);
+                            Response::Ok(req.tid, req.fc, req.addr, values)
                         }
                     };
                     debug!("PLC response: {:?}", resp);
@@ -163,8 +159,9 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
                 }
             }
 
-            epoch += self.sleep;
-            let sleep_ns = epoch - precise_time_ns();
+            // wait until next cycle
+            cycle_start += self.sleep;
+            let sleep_ns = cycle_start - precise_time_ns();
             thread::sleep(Duration::from_nanos(sleep_ns));
         }
     }
