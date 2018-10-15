@@ -115,7 +115,7 @@ pub struct Plc<P, E> {
     master: Master,
     domain: DomainHandle,
     sleep:  u64,
-    server: Option<(Receiver<(usize, Request)>, Sender<(usize, Response)>)>,
+    server: Option<(Receiver<Request>, Sender<Response>)>,
     _types: (PhantomData<P>, PhantomData<E>),
 }
 
@@ -137,25 +137,28 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
 
             // external data exchange via modbus
             if let Some((r, w)) = self.server.as_mut() {
-                while let Some((id, req)) = r.try_recv() {
-                    debug!("PLC got request from {}: {:?}", id, req);
+                while let Some(mut req) = r.try_recv() {
+                    debug!("PLC got request: {:?}", req);
                     let data = ext.cast();
                     let resp = if req.addr < BASE || req.addr + req.count > BASE + E::size()/2 {
-                        Response::Error(req.tid, req.fc, 2)
+                        Response::Error(req, 2)
                     } else {
                         let from = 2 * (req.addr - BASE);
                         let to = from + 2 * req.count;
-                        if let Some(values) = req.write {
-                            NE::write_u16_into(&values, &mut data[from..to]);
-                            Response::Ok(req.tid, req.fc, req.addr, values)
+                        if let Some(ref mut values) = req.write {
+                            // write request
+                            NE::write_u16_into(values, &mut data[from..to]);
+                            let values = req.write.take().unwrap();
+                            Response::Ok(req, values)
                         } else {
+                            // read request
                             let mut values = vec![0; req.count];
                             NE::read_u16_into(&data[from..to], &mut values);
-                            Response::Ok(req.tid, req.fc, req.addr, values)
+                            Response::Ok(req, values)
                         }
                     };
                     debug!("PLC response: {:?}", resp);
-                    w.send((id, resp));
+                    w.send(resp);
                 }
             }
 

@@ -1,6 +1,6 @@
 //! Modbus server allowing access to the PLC "memory" variables.
 
-use std::sync::{Arc, Mutex};
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
@@ -11,7 +11,8 @@ use ethercat::Result;
 
 // XXX: refactor
 #[derive(Debug)]
-pub struct Request {
+pub(crate) struct Request {
+    pub hid: usize,
     pub tid: u16,
     pub fc: u8,
     pub addr: usize,
@@ -20,31 +21,35 @@ pub struct Request {
 }
 
 #[derive(Debug)]
-pub enum Response {
-    Ok(u16, u8, usize, Vec<u16>),
-    Error(u16, u8, u8),
+pub(crate) enum Response {
+    Ok(Request, Vec<u16>),
+    Error(Request, u8),
+}
+
+enum HandlerEvent {
+    Request(Request),
+    New((usize, Sender<Response>)),
+    Finished(usize),
 }
 
 struct Handler {
-    id:       usize,
+    hid:      usize,
     client:   TcpStream,
-    requests: Sender<(usize, Request)>,
+    requests: Sender<HandlerEvent>,
 }
 
 pub struct Server {
-    to_plc:   Sender<(usize, Request)>,
-    from_plc: Receiver<(usize, Response)>,
-    // XXX: horrible, never closes clients!
-    handlers: Arc<Mutex<Vec<Sender<Response>>>>,
+    to_plc:   Sender<Request>,
+    from_plc: Receiver<Response>,
 }
 
 impl Handler {
-    pub fn new(client: TcpStream, id: usize, requests: Sender<(usize, Request)>,
+    pub fn new(client: TcpStream, hid: usize, requests: Sender<HandlerEvent>,
                replies: Receiver<Response>) -> Self
     {
         let send_client = client.try_clone().expect("could not clone socket");
         thread::spawn(move || Handler::sender(send_client, replies));
-        Handler { client, id, requests }
+        Handler { client, hid, requests }
     }
 
     fn sender(mut client: TcpStream, replies: Receiver<Response>) {
@@ -54,10 +59,10 @@ impl Handler {
         for response in replies {
             debug!("sending response: {:?}", response);
             let count = match response {
-                Response::Ok(tid, fc, addr, values) => {
-                    BE::write_u16(&mut buf, tid);
-                    buf[7] = fc;
-                    match fc {
+                Response::Ok(req, values) => {
+                    BE::write_u16(&mut buf, req.tid);
+                    buf[7] = req.fc;
+                    match req.fc {
                         3 | 4 => {
                             let nbytes = 2 * values.len();
                             buf[8] = nbytes as u8;
@@ -65,21 +70,21 @@ impl Handler {
                             9 + nbytes
                         }
                         6 => {
-                            BE::write_u16(&mut buf[8..], addr as u16);
+                            BE::write_u16(&mut buf[8..], req.addr as u16);
                             BE::write_u16(&mut buf[10..], values[0]);
                             12
                         }
                         16 => {
-                            BE::write_u16(&mut buf[8..], addr as u16);
+                            BE::write_u16(&mut buf[8..], req.addr as u16);
                             BE::write_u16(&mut buf[10..], values.len() as u16);
                             12
                         }
                         x => panic!("impossible function code {}", x)
                     }
                 }
-                Response::Error(tid, fc, ec) => {
-                    BE::write_u16(&mut buf, tid);
-                    buf[7] = fc | 0x80;
+                Response::Error(req, ec) => {
+                    BE::write_u16(&mut buf, req.tid);
+                    buf[7] = req.fc | 0x80;
                     buf[8] = ec;
                     9
                 }
@@ -127,7 +132,7 @@ impl Handler {
                     }
                     let addr = BE::read_u16(&bodybuf[..2]) as usize;
                     let count = BE::read_u16(&bodybuf[2..4]) as usize;
-                    Request { tid, fc, addr, count, write: None }
+                    Request { hid: self.hid, tid, fc, addr, count, write: None }
                 }
                 6 => {
                     if data_len != 6 {
@@ -136,7 +141,7 @@ impl Handler {
                     }
                     let addr = BE::read_u16(&bodybuf[..2]) as usize;
                     let value = BE::read_u16(&bodybuf[2..4]);
-                    Request { tid, fc, addr, count: 1, write: Some(vec![value]) }
+                    Request { hid: self.hid, tid, fc, addr, count: 1, write: Some(vec![value]) }
                 }
                 16 => {
                     if data_len < 7 {
@@ -151,7 +156,7 @@ impl Handler {
                     }
                     let mut values = vec![0; bytecount / 2];
                     BE::read_u16_into(&bodybuf[5..5+bytecount], &mut values);
-                    Request { tid, fc, addr, count: values.len(), write: Some(values) }
+                    Request { hid: self.hid, tid, fc, addr, count: values.len(), write: Some(values) }
                 }
                 _ => {
                     warn!("unknown function code {}", fc);
@@ -166,58 +171,65 @@ impl Handler {
                 }
             };
             debug!("got request: {:?}", req);
-            self.requests.send((self.id, req));
+            self.requests.send(HandlerEvent::Request(req));
         }
         info!("handler is finished");
+        self.requests.send(HandlerEvent::Finished(self.hid));
     }
 }
 
 impl Server {
-    pub fn new() -> (Self, Receiver<(usize, Request)>, Sender<(usize, Response)>) {
+    pub(crate) fn new() -> (Self, Receiver<Request>, Sender<Response>) {
         let (w_to_plc, r_to_plc) = unbounded();
         let (w_from_plc, r_from_plc) = unbounded();
-        (Server { to_plc: w_to_plc,
-                  from_plc: r_from_plc,
-                  handlers: Default::default() },
-         r_to_plc, w_from_plc)
+        (Server { to_plc: w_to_plc, from_plc: r_from_plc }, r_to_plc, w_from_plc)
     }
 
     /// Listen for connections on the TCP socket and spawn handlers for it.
-    fn tcp_listener(handlers: Arc<Mutex<Vec<Sender<Response>>>>,
-                    tcp_sock: TcpListener, client_sender: Sender<(usize, Request)>) {
+    fn tcp_listener(tcp_sock: TcpListener, handler_sender: Sender<HandlerEvent>) {
         mlzlog::set_thread_prefix("Server: ".into());
 
         info!("tcp listener started");
+        let mut handler_id = 0;
 
         while let Ok((stream, addr)) = tcp_sock.accept() {
             info!("new client connected: {}", addr);
-            let mut handlers = handlers.lock().unwrap();
             let (w_rep, r_rep) = unbounded();
-            let w_req = client_sender.clone();
-            let id = handlers.len();
-            handlers.push(w_rep);
-            thread::spawn(move || Handler::new(stream, id, w_req, r_rep).handle());
+            let w_req = handler_sender.clone();
+            handler_id += 1;
+            w_req.send(HandlerEvent::New((handler_id, w_rep)));
+            thread::spawn(move || Handler::new(stream, handler_id, w_req, r_rep).handle());
         }
     }
 
-    fn dispatcher(self, r_clients: Receiver<(usize, Request)>) {
+    fn dispatcher(self, r_clients: Receiver<HandlerEvent>) {
         mlzlog::set_thread_prefix("Dispatcher: ".into());
 
-        for (id, req) in r_clients {
-            // debug!("got request: {:?}", req);
-            self.to_plc.send((id, req));
-            let (id, resp) = self.from_plc.recv().unwrap();
-            // debug!("got response: {:?}", resp);
-            self.handlers.lock().unwrap()[id].send(resp);
+        let mut handlers = BTreeMap::new();
+
+        for event in r_clients {
+            match event {
+                HandlerEvent::New((id, chan)) => {
+                    handlers.insert(id, chan);
+                }
+                HandlerEvent::Finished(id) => {
+                    handlers.remove(&id);
+                }
+                HandlerEvent::Request(req) => {
+                    let hid = req.hid;
+                    self.to_plc.send(req);
+                    let resp = self.from_plc.recv().unwrap();
+                    handlers[&hid].send(resp);
+                }
+            }
         }
     }
 
     pub fn start(self, addr: &str) -> Result<()> {
         let (w_clients, r_clients) = unbounded();
         let tcp_sock = TcpListener::bind(addr)?;
-        let handlers = self.handlers.clone();
 
-        thread::spawn(move || Server::tcp_listener(handlers, tcp_sock, w_clients));
+        thread::spawn(move || Server::tcp_listener(tcp_sock, w_clients));
         thread::spawn(move || Server::dispatcher(self, r_clients));
 
         Ok(())
