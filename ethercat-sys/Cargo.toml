@@ -5,7 +5,7 @@ authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
 [dependencies]
-ioctl-sys = "*"
+ioctl-sys = "0.5"
 
 [build-dependencies]
-bindgen = "*"
+bindgen = "0.42"

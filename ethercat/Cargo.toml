@@ -5,6 +5,6 @@ authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
 [dependencies]
-libc = "*"
-memmap = "*"
+libc = "0.2"
+memmap = "0.7"
 ethercat-sys = { path = "../ethercat-sys" }
