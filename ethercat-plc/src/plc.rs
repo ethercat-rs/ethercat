@@ -6,6 +6,7 @@ use time::precise_time_ns;
 use byteorder::{ByteOrder, NativeEndian as NE};
 use crossbeam_channel::{Sender, Receiver};
 use mlzlog;
+use log::*;
 
 use ethercat::*;
 
@@ -142,7 +143,7 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
 
             // external data exchange via modbus
             if let Some((r, w)) = self.server.as_mut() {
-                while let Some(mut req) = r.try_recv() {
+                while let Ok(mut req) = r.try_recv() {
                     debug!("PLC got request: {:?}", req);
                     let data = ext.cast();
                     let resp = if req.addr < BASE || req.addr + req.count > BASE + E::size()/2 {
@@ -163,7 +164,9 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
                         }
                     };
                     debug!("PLC response: {:?}", resp);
-                    w.send(resp);
+                    if let Err(e) = w.send(resp) {
+                        warn!("could not send back response: {}", e);
+                    }
                 }
             }
 

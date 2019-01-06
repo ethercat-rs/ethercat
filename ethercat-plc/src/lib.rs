@@ -1,18 +1,10 @@
-#[macro_use]
-extern crate log;
-extern crate libc;
-extern crate time;
-extern crate mlzlog;
-extern crate byteorder;
-extern crate crossbeam_channel;
-extern crate ethercat;
-
-mod image;
 mod plc;
+mod image;
 mod server;
 
 pub mod beckhoff;
 pub mod mlz_spec;
 
-pub use self::image::{ExternImage, ProcessImage};
 pub use self::plc::{Plc, PlcBuilder};
+pub use self::image::{ExternImage, ProcessImage};
+pub use ethercat_derive::{ExternImage, ProcessImage};

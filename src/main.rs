@@ -1,7 +1,3 @@
-extern crate ethercat_plc;
-#[macro_use]
-extern crate ethercat_derive;
-
 use ethercat_plc::{PlcBuilder, ProcessImage, ExternImage};
 use ethercat_plc::beckhoff::*;
 use ethercat_plc::mlz_spec::*;

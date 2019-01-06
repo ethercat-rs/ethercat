@@ -2,15 +2,11 @@
 
 #![recursion_limit="128"]
 
-#[macro_use]
-extern crate quote;
-#[macro_use]
-extern crate syn;
+extern crate proc_macro;  // needed even in 2018
 
-extern crate proc_macro;
-extern crate proc_macro2;
-
-use self::proc_macro::TokenStream;
+use proc_macro::TokenStream;
+use syn::parse_macro_input;
+use quote::quote;
 
 #[proc_macro_derive(ProcessImage, attributes(plc))]
 pub fn derive_process_image(input: TokenStream) -> TokenStream {

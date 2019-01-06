@@ -2,10 +2,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-#[macro_use]
-extern crate ioctl_sys;
-
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+use ioctl_sys::{ioctl, io, ioc, ior, iow, iorw};
 
 pub mod ioctl {
     use super::*;

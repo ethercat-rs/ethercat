@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::io::{Result, Read, Write, ErrorKind};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
+use log::*;
 use byteorder::{ByteOrder, BE};
 use crossbeam_channel::{unbounded, Sender, Receiver};
 
@@ -172,10 +173,14 @@ impl Handler {
                 }
             };
             debug!("got request: {:?}", req);
-            self.requests.send(HandlerEvent::Request(req));
+            if let Err(e) = self.requests.send(HandlerEvent::Request(req)) {
+                warn!("couldn't send request to server: {}", e);
+            }
         }
         info!("connection closed");
-        self.requests.send(HandlerEvent::Finished(self.hid));
+        if let Err(e) = self.requests.send(HandlerEvent::Finished(self.hid)) {
+            warn!("couldn't send finish event to server: {}", e);
+        }
     }
 }
 
@@ -188,7 +193,7 @@ impl Server {
 
     /// Listen for connections on the TCP socket and spawn handlers for it.
     fn tcp_listener(tcp_sock: TcpListener, handler_sender: Sender<HandlerEvent>) {
-        mlzlog::set_thread_prefix("Modbus: ".into());
+        mlzlog::set_thread_prefix("Modbus: ");
 
         info!("listening on {}", tcp_sock.local_addr().unwrap());
         let mut handler_id = 0;
@@ -197,13 +202,17 @@ impl Server {
             let (w_rep, r_rep) = unbounded();
             let w_req = handler_sender.clone();
             handler_id += 1;
-            w_req.send(HandlerEvent::New((handler_id, w_rep)));
-            thread::spawn(move || Handler::new(stream, handler_id, w_req, r_rep).handle());
+            if let Err(e) = w_req.send(HandlerEvent::New((handler_id, w_rep))) {
+                warn!("couldn't send new handler event: {}", e);
+            } else {
+                thread::spawn(move || Handler::new(stream, handler_id,
+                                                   w_req, r_rep).handle());
+            }
         }
     }
 
     fn dispatcher(self, r_clients: Receiver<HandlerEvent>) {
-        mlzlog::set_thread_prefix("Dispatcher: ".into());
+        mlzlog::set_thread_prefix("Dispatcher: ");
 
         let mut handlers = BTreeMap::new();
 
@@ -217,9 +226,14 @@ impl Server {
                 }
                 HandlerEvent::Request(req) => {
                     let hid = req.hid;
-                    self.to_plc.send(req);
-                    let resp = self.from_plc.recv().unwrap();
-                    handlers[&hid].send(resp);
+                    if let Err(e) = self.to_plc.send(req) {
+                        warn!("couldn't send request to PLC: {}", e);
+                    } else {
+                        let resp = self.from_plc.recv().unwrap();
+                        if let Err(e) = handlers[&hid].send(resp) {
+                            warn!("couldn't send reply to handler: {}", e);
+                        }
+                    }
                 }
             }
         }

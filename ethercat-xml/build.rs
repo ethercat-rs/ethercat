@@ -1,7 +1,3 @@
-extern crate rayon;
-extern crate heck;
-extern crate quick_xml;
-
 use std::collections::{HashMap, HashSet};
 use std::{env, fs, io, str};
 use std::borrow::Cow;
@@ -93,7 +89,7 @@ struct Pdo {
 #[derive(Default, Debug)]
 struct Mapping {
     name: String,
-    entries: Vec<(u8, Vec<u16>)>,
+    entries: Vec<(u8, Vec<u16>)>,  // Sm, [PdoIndex]
 }
 
 #[derive(Default, Debug)]
@@ -298,11 +294,13 @@ fn main() {
         Err(_) => PathBuf::from("../xml")
     };
 
+    // collect XML filenames
     let paths = fs::read_dir(&path).unwrap().filter_map(|file| {
         let path = file.unwrap().path();
         if path.extension().map_or(false, |e| e == "xml") { Some(path) } else { None }
     }).collect::<Vec<_>>();
 
+    // extract all device info from XMLs
     let devices = paths.into_par_iter().flat_map(|path| {
         println!("cargo:rerun-if-changed={}", path.display());
         eprintln!("processing {}", path.display());
@@ -312,13 +310,16 @@ fn main() {
         })
     }).collect::<Vec<_>>();
 
+    // construct the blacklist, from "hiding" declarations in XML
     let blacklist = devices.iter().flat_map(|dev| {
         dev.hiding.iter().map(|rev| (dev.product, *rev)).collect::<Vec<_>>()
     }).collect::<HashSet<_>>();
 
+    // assemble a list of group names and prepare a map group -> devices
     let root = PathBuf::from(env::var("OUT_DIR").unwrap());
     let all_groups = devices.iter().map(|dev| &dev.group).collect::<HashSet<_>>();
     let mut all_groups = all_groups.into_iter().filter_map(|g| {
+        // filter out empty groups and evaluation boards
         if g.is_empty() || g.starts_with("eva_board") {
             None
         } else {
@@ -326,12 +327,14 @@ fn main() {
         }
     }).collect::<HashMap<_, _>>();
 
+    // move devices into the map by group
     for dev in devices {
         if let Some(group) = all_groups.get_mut(&dev.group) {
             group.1.push(dev);
         }
     }
 
+    // create the main output file, it just references the group modules
     let mainfile = root.join("generated.rs");
     let mut fp = fs::File::create(&mainfile).unwrap();
     for group in all_groups.keys() {
@@ -339,6 +342,7 @@ fn main() {
     }
     drop(fp);
 
+    // create a module per group
     all_groups.into_par_iter().for_each(|(_, (groupfile, devices))| {
         let mut fp = fs::File::create(&groupfile).unwrap();
         writeln!(fp, "use ethercat::*;\nuse ethercat_plc::ProcessImage;\n").unwrap();

@@ -184,9 +184,11 @@ pub struct PdoInfo<'a> {
     pub entries: &'a [PdoEntryInfo],
 }
 
+const NO_ENTRIES: &[PdoEntryInfo] = &[];
+
 impl PdoInfo<'static> {
     pub const fn default(index: PdoIndex) -> PdoInfo<'static> {
-        PdoInfo { index, entries: &[] }
+        PdoInfo { index, entries: NO_ENTRIES }
     }
 }
 

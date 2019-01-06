@@ -8,7 +8,8 @@ edition = "2018"
 log = "0.4"
 libc = "0.2"
 time = "0.1"
-mlzlog = "0.4"
+mlzlog = "0.5.1"
 byteorder = "1.2"
-crossbeam-channel = "0.2"
+crossbeam-channel = "0.3.6"
 ethercat = { path = "../ethercat" }
+ethercat-derive = { path = "../ethercat-derive" }

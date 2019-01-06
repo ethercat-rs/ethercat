@@ -1,6 +1,4 @@
-extern crate libc;
-extern crate memmap;
-extern crate ethercat_sys as ec;
+use ethercat_sys as ec;
 
 mod master;
 mod types;
