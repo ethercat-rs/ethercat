@@ -10,5 +10,4 @@ edition = "2018"
 byteorder = "1.2"
 ethercat = { path = "ethercat" }
 ethercat-plc = { path = "ethercat-plc" }
-ethercat-xml = { path = "ethercat-xml" }
 ethercat-derive = { path = "ethercat-derive" }

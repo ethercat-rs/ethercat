@@ -7,6 +7,73 @@ extern crate proc_macro;  // needed even in 2018
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 use quote::quote;
+use quote::ToTokens;
+
+
+#[proc_macro_derive(SlaveProcessImage, attributes(slave_id, pdo))]
+pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    let ident = input.ident;
+
+    let id_str = ident.to_string();
+    let slave_id = if id_str.starts_with("EK") {
+        let nr = id_str[2..].parse::<u32>().unwrap();
+        quote!(ethercat::SlaveId { vendor_id: 2, product_code: (#nr << 16) | 0x2c52 })
+    } else if id_str.starts_with("EL") {
+        let nr = id_str[2..].parse::<u32>().unwrap();
+        quote!(ethercat::SlaveId { vendor_id: 2, product_code: (#nr << 16) | 0x2c52 })
+    } else {
+        panic!("cannot interpret struct name '{}' into a slave ID", id_str);
+    };
+
+    let mut pdo_regs = vec![];
+    let mut running_size = 0usize;
+
+    if let syn::Data::Struct(syn::DataStruct { fields: syn::Fields::Named(flds), .. }) = input.data {
+        for field in flds.named {
+            for attr in &field.attrs {
+                if attr.path.is_ident("pdo") {
+                    if let syn::Meta::List(syn::MetaList { nested, .. }) =
+                        attr.parse_meta().unwrap()
+                    {
+                        let ix = &nested[0];
+                        let subix = &nested[1];
+                        pdo_regs.push(quote! {
+                            (ethercat::PdoEntryIndex { index: #ix,
+                                                       subindex: #subix },
+                             ethercat::Offset { byte: #running_size, bit: 0 })
+                        });
+                    }
+                }
+            }
+            let ty = field.ty.into_token_stream().to_string();
+            match &*ty {
+                "u8"  | "i8"  => running_size += 1,
+                "u16" | "i16" => running_size += 2,
+                "u32" | "i32" | "f32" => running_size += 4,
+                "u64" | "i64" | "f64" => running_size += 8,
+                _ => panic!("cannot handle type '{}' in image", ty)
+            }
+        }
+    } else {
+        panic!("SlaveProcessImage must be a struct with named fields");
+    }
+
+    let generated = quote! {
+        #[automatically_derived]
+        impl ProcessImage for #ident {
+            const SLAVE_COUNT: usize = 1;
+            fn get_slave_ids() -> Vec<SlaveId> { vec![#slave_id] }
+            fn get_slave_regs() -> Vec<Vec<(PdoEntryIndex, Offset)>> {
+                vec![vec![ #( #pdo_regs ),* ]]
+            }
+        }
+    };
+
+    // println!("{}", generated);
+    generated.into()
+}
+
 
 #[proc_macro_derive(ProcessImage, attributes(plc))]
 pub fn derive_process_image(input: TokenStream) -> TokenStream {

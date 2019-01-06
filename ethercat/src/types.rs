@@ -20,20 +20,6 @@ pub struct SlaveId {
 }
 
 
-// XXX: go away after autogen
-impl SlaveId {
-    #![allow(non_snake_case)]
-
-    pub fn EL(nr: u32) -> SlaveId {
-        SlaveId { vendor_id: 0x2, product_code: (nr << 16) | 0x3052 }
-    }
-
-    pub fn EK(nr: u32) -> SlaveId {
-        SlaveId { vendor_id: 0x2, product_code: (nr << 16) | 0x2c52 }
-    }
-}
-
-
 /// An EtherCAT slave revision identification.
 #[derive(Debug, Clone, Copy)]
 pub struct SlaveRev {
