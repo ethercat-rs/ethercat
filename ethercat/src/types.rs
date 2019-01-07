@@ -8,7 +8,7 @@ pub type MasterIndex = u32;
 pub type DomainIndex = u32;
 pub type SlaveConfigIndex = u32;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct DomainHandle(pub(crate) usize);
 
 
@@ -119,14 +119,14 @@ pub struct SlaveConfigState {
     pub al_state: AlState,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum SyncDirection {
     Invalid,
     Output,
     Input,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum WatchdogMode {
     Default,
     Enable,
@@ -136,7 +136,7 @@ pub enum WatchdogMode {
 pub type SmIndex = u8;
 pub type PdoIndex = u16;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct PdoEntryIndex {
     pub index: u16,
     pub subindex: u8,
@@ -148,6 +148,7 @@ pub struct SdoIndex {
     pub subindex: u8,
 }
 
+#[derive(Debug)]
 pub struct SyncInfo<'a> {
     pub index: SmIndex,
     pub direction: SyncDirection,
@@ -165,6 +166,7 @@ impl SyncInfo<'static> {
     }
 }
 
+#[derive(Debug)]
 pub struct PdoInfo<'a> {
     pub index: PdoIndex,
     pub entries: &'a [PdoEntryInfo],
@@ -178,6 +180,7 @@ impl PdoInfo<'static> {
     }
 }
 
+#[derive(Debug)]
 pub struct PdoEntryInfo {
     pub index: PdoEntryIndex,
     pub bit_length: u8,

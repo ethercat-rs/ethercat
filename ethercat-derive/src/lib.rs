@@ -10,60 +10,117 @@ use quote::quote;
 use quote::ToTokens;
 
 
-#[proc_macro_derive(SlaveProcessImage, attributes(slave_id, pdo))]
+#[proc_macro_derive(SlaveProcessImage, attributes(slave_id, pdos, entry))]
 pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     let ident = input.ident;
 
     let id_str = ident.to_string();
     let slave_id = if id_str.starts_with("EK") {
-        let nr = id_str[2..].parse::<u32>().unwrap();
+        let nr = id_str[2..6].parse::<u32>().unwrap();
         quote!(ethercat::SlaveId { vendor_id: 2, product_code: (#nr << 16) | 0x2c52 })
     } else if id_str.starts_with("EL") {
-        let nr = id_str[2..].parse::<u32>().unwrap();
-        quote!(ethercat::SlaveId { vendor_id: 2, product_code: (#nr << 16) | 0x2c52 })
+        let nr = id_str[2..6].parse::<u32>().unwrap();
+        quote!(ethercat::SlaveId { vendor_id: 2, product_code: (#nr << 16) | 0x3052 })
     } else {
         panic!("cannot interpret struct name '{}' into a slave ID", id_str);
     };
 
+    let mut sync_infos = vec![];
     let mut pdo_regs = vec![];
     let mut running_size = 0usize;
+    let mut pdo_mapping = std::collections::HashMap::new();
 
     if let syn::Data::Struct(syn::DataStruct { fields: syn::Fields::Named(flds), .. }) = input.data {
         for field in flds.named {
+            let ty = field.ty.into_token_stream().to_string();
+            let bitlen = match &*ty {
+                "u8"  | "i8"  => 8,
+                "u16" | "i16" => 16,
+                "u32" | "i32" | "f32" => 32,
+                "u64" | "i64" | "f64" => 64,
+                _ => panic!("cannot handle type '{}' in image", ty)
+            };
             for attr in &field.attrs {
-                if attr.path.is_ident("pdo") {
+                if attr.path.is_ident("entry") {
                     if let syn::Meta::List(syn::MetaList { nested, .. }) =
                         attr.parse_meta().unwrap()
                     {
-                        let ix = &nested[0];
-                        let subix = &nested[1];
+                        let (pdo_str, ix, subix) = if nested.len() == 2 {
+                            ("".into(), nested[0].clone(), nested[1].clone())
+                        } else {
+                            let pdo = &nested[0];
+                            (quote!(#pdo).to_string(), nested[1].clone(), nested[2].clone())
+                        };
                         pdo_regs.push(quote! {
                             (ethercat::PdoEntryIndex { index: #ix,
                                                        subindex: #subix },
                              ethercat::Offset { byte: #running_size, bit: 0 })
                         });
+                        pdo_mapping.entry(pdo_str).or_insert_with(Vec::new).push(quote! {
+                            ethercat::PdoEntryInfo {
+                                index: PdoEntryIndex { index: #ix, subindex: #subix },
+                                bit_length: #bitlen as u8,
+                            }
+                        });
                     }
                 }
             }
-            let ty = field.ty.into_token_stream().to_string();
-            match &*ty {
-                "u8"  | "i8"  => running_size += 1,
-                "u16" | "i16" => running_size += 2,
-                "u32" | "i32" | "f32" => running_size += 4,
-                "u64" | "i64" | "f64" => running_size += 8,
-                _ => panic!("cannot handle type '{}' in image", ty)
-            }
+            running_size += bitlen / 8;
         }
     } else {
         panic!("SlaveProcessImage must be a struct with named fields");
     }
+
+    for attr in &input.attrs {
+        if attr.path.is_ident("pdos") {
+            if let syn::Meta::List(syn::MetaList { nested, .. }) = attr.parse_meta().unwrap() {
+                let sm = &nested[0];
+                let sd = &nested[1];
+                let mut pdos = vec![];
+                for pdo_index in nested.iter().skip(2) {
+                    let pdo_str = quote!(#pdo_index).to_string();
+                    let entries = &pdo_mapping.get(&pdo_str).map_or(&[][..], |v| &*v);
+                    pdos.push(quote! {
+                        ethercat::PdoInfo {
+                            index: #pdo_index,
+                            entries: {
+                                const ENTRIES: &[ethercat::PdoEntryInfo] = &[#(
+                                    #entries
+                                ),*];
+                                ENTRIES
+                            }
+                        }
+                    })
+                }
+                sync_infos.push(quote! {
+                    ethercat::SyncInfo {
+                        index: #sm,
+                        direction: ethercat::SyncDirection::#sd,
+                        watchdog_mode: ethercat::WatchdogMode::Default,
+                        pdos: {
+                            const INFOS: &[ethercat::PdoInfo<'static>] = &[#( #pdos ),*]; INFOS
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    let sync_infos = if sync_infos.is_empty() {
+        quote!(None)
+    } else {
+        quote!(Some(vec![#( #sync_infos ),*]))
+    };
 
     let generated = quote! {
         #[automatically_derived]
         impl ProcessImage for #ident {
             const SLAVE_COUNT: usize = 1;
             fn get_slave_ids() -> Vec<SlaveId> { vec![#slave_id] }
+            fn get_slave_pdos() -> Vec<Option<Vec<SyncInfo<'static>>>> {
+                vec![#sync_infos]
+            }
             fn get_slave_regs() -> Vec<Vec<(PdoEntryIndex, Offset)>> {
                 vec![vec![ #( #pdo_regs ),* ]]
             }
