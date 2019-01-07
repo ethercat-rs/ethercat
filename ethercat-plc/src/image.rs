@@ -8,7 +8,7 @@ pub trait ProcessImage {
     fn get_slave_ids() -> Vec<SlaveId>;
     fn get_slave_pdos() -> Vec<Option<Vec<SyncInfo<'static>>>> { vec![None] }
     fn get_slave_regs() -> Vec<Vec<(PdoEntryIndex, Offset)>> { vec![vec![]] }
-    fn get_slave_sdos() -> Vec<Vec<()>> { vec![vec![]] }
+    fn get_slave_sdos() -> Vec<Vec<(SdoIndex, Box<dyn SdoData>)>> { vec![vec![]] }
 
     fn size() -> usize where Self: Sized {
         std::mem::size_of::<Self>()

@@ -68,6 +68,18 @@ pub struct MasterState {
 }
 
 #[derive(Debug)]
+pub struct ConfigInfo {
+    pub alias: u16,
+    pub position: u16,
+    pub id: SlaveId,
+    pub slave_position: Option<u32>,
+    pub sdo_count: u32,
+    pub idn_count: u32,
+    // TODO: more attributes are returned:
+    // syncs[*], watchdog_*, dc_*
+}
+
+#[derive(Debug)]
 pub struct SlaveInfo {
     pub name: String,
     pub ring_pos: u16,
@@ -206,11 +218,24 @@ impl From<u32> for AlState {
     }
 }
 
-pub trait SdoData { }
+pub trait SdoData {
+    fn data_ptr(&self) -> *const u8 { self as *const _ as _ }
+    fn data_size(&self) -> usize { std::mem::size_of_val(self) }
+}
 
 impl SdoData for u8 { }
 impl SdoData for u16 { }
 impl SdoData for u32 { }
+impl SdoData for u64 { }
+impl SdoData for i8 { }
+impl SdoData for i16 { }
+impl SdoData for i32 { }
+impl SdoData for i64 { }
+
+impl SdoData for &'_ [u8] {
+    fn data_ptr(&self) -> *const u8 { self.as_ptr() }
+    fn data_size(&self) -> usize { self.len() }
+}
 
 #[derive(Debug)]
 pub struct DomainState {

@@ -31,7 +31,9 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
     let mut running_size = 0usize;
     let mut pdo_mapping = std::collections::HashMap::new();
 
-    if let syn::Data::Struct(syn::DataStruct { fields: syn::Fields::Named(flds), .. }) = input.data {
+    if let syn::Data::Struct(syn::DataStruct {
+        fields: syn::Fields::Named(flds), ..
+    }) = input.data {
         for field in flds.named {
             let ty = field.ty.into_token_stream().to_string();
             let bitlen = match &*ty {
@@ -50,7 +52,8 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
                             ("".into(), nested[0].clone(), nested[1].clone())
                         } else {
                             let pdo = &nested[0];
-                            (quote!(#pdo).to_string(), nested[1].clone(), nested[2].clone())
+                            (quote!(#pdo).to_string(), nested[1].clone(),
+                             nested[2].clone())
                         };
                         pdo_regs.push(quote! {
                             (ethercat::PdoEntryIndex { index: #ix,
@@ -74,7 +77,9 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
 
     for attr in &input.attrs {
         if attr.path.is_ident("pdos") {
-            if let syn::Meta::List(syn::MetaList { nested, .. }) = attr.parse_meta().unwrap() {
+            if let syn::Meta::List(syn::MetaList { nested, .. }) =
+                attr.parse_meta().unwrap()
+            {
                 let sm = &nested[0];
                 let sd = &nested[1];
                 let mut pdos = vec![];
@@ -85,10 +90,8 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
                         ethercat::PdoInfo {
                             index: #pdo_index,
                             entries: {
-                                const ENTRIES: &[ethercat::PdoEntryInfo] = &[#(
-                                    #entries
-                                ),*];
-                                ENTRIES
+                                const ENTRIES: &[ethercat::PdoEntryInfo] =
+                                    &[#( #entries ),*]; ENTRIES
                             }
                         }
                     })
@@ -99,7 +102,8 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
                         direction: ethercat::SyncDirection::#sd,
                         watchdog_mode: ethercat::WatchdogMode::Default,
                         pdos: {
-                            const INFOS: &[ethercat::PdoInfo<'static>] = &[#( #pdos ),*]; INFOS
+                            const INFOS: &[ethercat::PdoInfo<'static>] =
+                                &[#( #pdos ),*]; INFOS
                         }
                     }
                 });
@@ -132,7 +136,7 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
 }
 
 
-#[proc_macro_derive(ProcessImage, attributes(plc))]
+#[proc_macro_derive(ProcessImage, attributes(sdo))]
 pub fn derive_process_image(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     let ident = input.ident;
@@ -143,14 +147,41 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
     let mut slave_regs = vec![];
     let mut slave_sdos = vec![];
 
-    if let syn::Data::Struct(syn::DataStruct { fields: syn::Fields::Named(flds), .. }) = input.data {
+    if let syn::Data::Struct(syn::DataStruct {
+        fields: syn::Fields::Named(flds), ..
+    }) = input.data {
         for field in flds.named {
             let ty = field.ty;
             slave_count.push(quote!( #ty :: SLAVE_COUNT ));
             slave_ids.push(quote!( res.extend(#ty::get_slave_ids()); ));
             slave_pdos.push(quote!( res.extend(#ty::get_slave_pdos()); ));
             slave_regs.push(quote!( res.extend(#ty::get_slave_regs()); ));
-            slave_sdos.push(quote!( res.extend(#ty::get_slave_sdos()); ));
+            let mut sdos = vec![];
+            for attr in &field.attrs {
+                if attr.path.is_ident("sdo") {
+                    if let syn::Meta::List(syn::MetaList { nested, .. }) =
+                        attr.parse_meta().unwrap()
+                    {
+                        let ix = &nested[0];
+                        let subix = &nested[1];
+                        let data_expr = &nested[2];
+                        let data_str = if let syn::NestedMeta::Literal(syn::Lit::Str(s)) = data_expr {
+                            syn::parse_str::<syn::Expr>(&s.value()).unwrap()
+                        } else {
+                            panic!("invalid SDO value, must be stringified")
+                        };
+                        sdos.push(quote! {
+                            (ethercat::SdoIndex { index: #ix, subindex: #subix },
+                             Box::new(#data_str))
+                        });
+                    }
+                }
+            }
+            if sdos.is_empty() {
+                slave_sdos.push(quote!( res.extend(#ty::get_slave_sdos()); ));
+            } else {
+                slave_sdos.push(quote!( res.push(vec![#( #sdos ),*]); ));
+            }
         }
     } else {
         return compile_error("only structs with named fields can be a process image");
@@ -169,7 +200,7 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
             fn get_slave_regs() -> Vec<Vec<(ethercat::PdoEntryIndex, ethercat::Offset)>> {
                 let mut res = vec![]; #(#slave_regs)* res
             }
-            fn get_slave_sdos() -> Vec<Vec<()>> {
+            fn get_slave_sdos() -> Vec<Vec<(ethercat::SdoIndex, Box<dyn ethercat::SdoData>)>> {
                 let mut res = vec![]; #(#slave_sdos)* res
             }
         }

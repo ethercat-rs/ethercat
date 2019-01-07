@@ -179,6 +179,21 @@ impl Master {
         })
     }
 
+    pub fn get_config_info(&self, index: SlaveConfigIndex) -> Result<ConfigInfo> {
+        let mut data = ec::ec_ioctl_config_t::default();
+        data.config_index = index;
+        ioctl!(self, ec::ioctl::CONFIG, &mut data)?;
+        Ok(ConfigInfo {
+            alias: data.alias,
+            position: data.position,
+            id: SlaveId { vendor_id: data.vendor_id, product_code: data.product_code },
+            slave_position: if data.slave_position == -1 { None } else {
+                Some(data.slave_position as u32) },
+            sdo_count: data.sdo_count,
+            idn_count: data.idn_count,
+        })
+    }
+
     pub fn configure_slave(&mut self, addr: SlaveAddr, expected: SlaveId) -> Result<SlaveConfig> {
         let mut data = ec::ec_ioctl_config_t::default();
         let (alias, pos) = addr.as_pair();
@@ -202,6 +217,10 @@ pub struct SlaveConfig<'m> {
 }
 
 impl<'m> SlaveConfig<'m> {
+    pub fn index(&self) -> SlaveConfigIndex {
+        self.index
+    }
+
     pub fn state(&self) -> Result<SlaveConfigState> {
         let mut state = ec::ec_slave_config_state_t::default();
         let mut data = ec::ec_ioctl_sc_state_t { config_index: self.index, state: &mut state };
@@ -332,13 +351,15 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_DC, &mut data).map(|_| ())
     }
 
-    pub fn add_sdo<T: SdoData>(&mut self, index: SdoIndex, data: T) -> Result<()> {
+    pub fn add_sdo<T>(&mut self, index: SdoIndex, data: &T) -> Result<()>
+        where T: SdoData + ?Sized
+    {
         let mut data = ec::ec_ioctl_sc_sdo_t {
             config_index: self.index,
             index: index.index,
             subindex: index.subindex,
-            data: &data as *const _ as *const u8,
-            size: std::mem::size_of::<T>(),
+            data: data.data_ptr(),
+            size: data.data_size(),
             complete_access: 0,
         };
         ioctl!(self.master, ec::ioctl::SC_SDO, &mut data).map(|_| ())

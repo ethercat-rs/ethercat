@@ -71,7 +71,13 @@ impl PlcBuilder {
         let slave_ids = P::get_slave_ids();
         let slave_pdos = P::get_slave_pdos();
         let slave_regs = P::get_slave_regs();
-        for (i, ((id, pdos), regs)) in slave_ids.into_iter().zip(slave_pdos).zip(slave_regs).enumerate() {
+        let slave_sdos = P::get_slave_sdos();
+        for (i, (((id, pdos), regs), sdos)) in slave_ids.into_iter()
+                                                        .zip(slave_pdos)
+                                                        .zip(slave_regs)
+                                                        .zip(slave_sdos)
+                                                        .enumerate()
+        {
             let mut config = master.configure_slave(SlaveAddr::ByPos(i as u16), id)?;
             if let Some(pdos) = pdos {
                 config.config_pdos(&pdos)?;
@@ -91,12 +97,21 @@ impl PlcBuilder {
                     }
                 }
             }
-            // XXX: SDOs etc.
+
+            for (sdo_index, data) in sdos {
+                config.add_sdo(sdo_index, &*data)?;
+            }
+
+            let cfg_index = config.index();
+            drop(config);
+
+            // ensure that the slave is actually present
+            if master.get_config_info(cfg_index)?.slave_position.is_none() {
+                panic!("slave {} does not match config", i);
+            }
         }
 
         info!("PLC: EtherCAT slaves configured");
-
-        // XXX: check actual slaves against configuration
 
         let domain_size = master.domain(domain).size()?;
         if domain_size != P::size() {
