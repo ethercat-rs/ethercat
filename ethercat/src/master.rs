@@ -205,8 +205,51 @@ impl Master {
         Ok(SlaveConfig { master: self, index: data.config_index })
     }
 
-    // XXX missing: get_sync_manager, get_pdo, get_pdo_entry,
-    // sdo_download, sdo_download_complete, sdo_upload, write_idn, read_idn,
+    pub fn sdo_download<T>(&mut self, position: u16, sdo_index: SdoIndex, data: &T) -> Result<()>
+    where T: SdoData + ?Sized
+    {
+        let mut data = ec::ec_ioctl_slave_sdo_download_t {
+            slave_position: position,
+            sdo_index: sdo_index.index,
+            sdo_entry_subindex: sdo_index.subindex,
+            complete_access: 0,
+            data_size: data.data_size(),
+            data: data.data_ptr(),
+            abort_code: 0,
+        };
+        ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
+    }
+
+    pub fn sdo_download_complete(&mut self, position: u16, sdo_index: SdoIndex,
+                                 data: &[u8]) -> Result<()> {
+        let mut data = ec::ec_ioctl_slave_sdo_download_t {
+            slave_position: position,
+            sdo_index: sdo_index.index,
+            sdo_entry_subindex: sdo_index.subindex,
+            complete_access: 1,
+            data_size: data.len(),
+            data: data.as_ptr(),
+            abort_code: 0,
+        };
+        ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
+    }
+
+    pub fn sdo_upload<'t>(&self, position: u16, sdo_index: SdoIndex,
+                          target: &'t mut [u8]) -> Result<&'t mut [u8]> {
+        let mut data = ec::ec_ioctl_slave_sdo_upload_t {
+            slave_position: position,
+            sdo_index: sdo_index.index,
+            sdo_entry_subindex: sdo_index.subindex,
+            target_size: target.len(),
+            target: target.as_mut_ptr(),
+            data_size: 0,
+            abort_code: 0,
+        };
+        ioctl!(self, ec::ioctl::SLAVE_SDO_UPLOAD, &mut data)?;
+        Ok(&mut target[..data.data_size])
+    }
+
+    // XXX missing: get_sync_manager, get_pdo, get_pdo_entry, write_idn, read_idn,
     // application_time, sync_reference_clock, sync_slave_clocks,
     // reference_clock_time, sync_monitor_queue, sync_monitor_process
 }
@@ -352,7 +395,7 @@ impl<'m> SlaveConfig<'m> {
     }
 
     pub fn add_sdo<T>(&mut self, index: SdoIndex, data: &T) -> Result<()>
-        where T: SdoData + ?Sized
+    where T: SdoData + ?Sized
     {
         let mut data = ec::ec_ioctl_sc_sdo_t {
             config_index: self.index,

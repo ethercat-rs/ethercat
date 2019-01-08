@@ -68,6 +68,9 @@ impl PlcBuilder {
 
         debug!("PLC: EtherCAT master opened");
 
+        // XXX
+        // master.sdo_download(1, SdoIndex::new(0x1011, 1), &0x64616F6Cu32)?;
+
         let slave_ids = P::get_slave_ids();
         let slave_pdos = P::get_slave_pdos();
         let slave_regs = P::get_slave_regs();

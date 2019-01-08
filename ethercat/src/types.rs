@@ -1,4 +1,5 @@
 use std::io;
+use derive_new::new;
 use crate::ec;
 
 pub type Error = io::Error;
@@ -13,7 +14,7 @@ pub struct DomainHandle(pub(crate) usize);
 
 
 /// An EtherCAT slave identification, consisting of vendor ID and product code.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, new)]
 pub struct SlaveId {
     pub vendor_id: u32,
     pub product_code: u32,
@@ -21,7 +22,7 @@ pub struct SlaveId {
 
 
 /// An EtherCAT slave revision identification.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, new)]
 pub struct SlaveRev {
     pub revision_number: u32,
     pub serial_number: u32,
@@ -46,7 +47,7 @@ impl SlaveAddr {
 }
 
 /// Offset of a PDO entry in the domain image.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, new)]
 pub struct Offset {
     pub byte: usize,
     pub bit: u32,
@@ -148,13 +149,13 @@ pub enum WatchdogMode {
 pub type SmIndex = u8;
 pub type PdoIndex = u16;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, new)]
 pub struct PdoEntryIndex {
     pub index: u16,
     pub subindex: u8,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, new)]
 pub struct SdoIndex {
     pub index: u16,
     pub subindex: u8,

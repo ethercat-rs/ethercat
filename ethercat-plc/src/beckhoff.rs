@@ -47,7 +47,7 @@ pub struct EL4132 {
 
 #[repr(C, packed)]
 #[derive(SlaveProcessImage)]
-#[pdos(3, Input,  0x1A01, 0x1A03, 0x1A04)]
+#[pdos(3, Input,  0x1A01, 0x1A03, 0x1A04, 0x1A08)]
 #[pdos(2, Output, 0x1601, 0x1602, 0x1604)]
 pub struct EL7047_Velocity {
     #[entry(0x1A01, 0x6000, 1)]  pub enc_status: u16,
@@ -56,10 +56,31 @@ pub struct EL7047_Velocity {
     #[entry(0x1A03, 0x6010, 1)]  pub mot_status: u16,
     #[entry(0x1A04, 0x6010, 11)] pub info_data1: u16,
     #[entry(0x1A04, 0x6010, 12)] pub info_data2: u16,
+    #[entry(0x1A08, 0x6010, 14)] pub mot_position: i32,
+
     #[entry(0x1601, 0x7000, 1)]  pub enc_control: u16,
     #[entry(0x1601, 0x7000, 11)] pub enc_set_counter: u32,
     #[entry(0x1602, 0x7010, 1)]  pub mot_control: u16,
-    #[entry(0x1604, 0x7010, 21)] pub mot_velocity: u16,
+    #[entry(0x1604, 0x7010, 21)] pub mot_velocity: i16,
+}
+
+#[repr(C, packed)]
+#[derive(SlaveProcessImage)]
+#[pdos(3, Input,  0x1A01, 0x1A03, 0x1A04, 0x1A08)]
+#[pdos(2, Output, 0x1601, 0x1602, 0x1603)]
+pub struct EL7047_Position {
+    #[entry(0x1A01, 0x6000, 1)]  pub enc_status: u16,
+    #[entry(0x1A01, 0x6000, 11)] pub enc_counter: u32,
+    #[entry(0x1A01, 0x6000, 12)] pub enc_latch: u32,
+    #[entry(0x1A03, 0x6010, 1)]  pub mot_status: u16,
+    #[entry(0x1A04, 0x6010, 11)] pub info_data1: u16,
+    #[entry(0x1A04, 0x6010, 12)] pub info_data2: u16,
+    #[entry(0x1A08, 0x6010, 14)] pub mot_position: i32,
+
+    #[entry(0x1601, 0x7000, 1)]  pub enc_control: u16,
+    #[entry(0x1601, 0x7000, 11)] pub enc_set_counter: u32,
+    #[entry(0x1602, 0x7010, 1)]  pub mot_control: u16,
+    #[entry(0x1603, 0x7010, 11)] pub mot_target: i32,
 }
 
 #[repr(C, packed)]

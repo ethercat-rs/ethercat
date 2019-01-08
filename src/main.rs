@@ -15,7 +15,16 @@ const INDEXER_OFFS: u16 = 6;
 #[derive(ProcessImage)]
 struct Image {
     coupler: EK1100,
-    digital: EL1859,
+    #[sdo(0x8010, 1, "750u16")]  // normal current 750 mA
+    #[sdo(0x8010, 2, "250u16")]  // reduced current 250 mA
+    #[sdo(0x8010, 3, "2400u16")] // supply is 24 V
+    #[sdo(0x8010, 4, "1000u16")] // resistance is 10 Ohm
+    #[sdo(0x8012, 8, "1u8")]     // feedback internal
+    #[sdo(0x8012, 0x11, "7u8")]  // info data 1: velocity
+    #[sdo(0x8012, 0x19, "13u8")] // info data 2: motor current
+    motor:   EL7047_Position,
+    dig_in:  EL1008,
+    dig_out: EL2008,
     ana_in:  EL3104,
     ana_out: EL4132,
 }
@@ -147,10 +156,10 @@ fn indexer(ext: &mut Extern, globals: &mut Globals) {
     globals.cycle = globals.cycle.wrapping_add(1);
 }
 
-fn fb_blink(data: &mut EL1859, iface: &mut DiscreteOutput) {
+fn fb_blink(data_in: &mut EL1008, data_out: &mut EL2008, iface: &mut DiscreteOutput) {
     match iface.status & 0xf000 {
         RESET => {
-            data.output = 0;
+            data_out.output = 0;
             iface.target = 0;
             iface.status = IDLE;
         }
@@ -158,13 +167,13 @@ fn fb_blink(data: &mut EL1859, iface: &mut DiscreteOutput) {
             iface.status = if iface.target == iface.value { IDLE } else { WARN };
         }
         START => {
-            data.output = iface.target as u8;
+            data_out.output = iface.target as u8;
             iface.status = IDLE;
         }
         _ => iface.status = ERROR,
     }
 
-    iface.value = data.input as i16;
+    iface.value = data_in.input as i16;
 }
 
 fn fb_magnet(inp: &mut EL3104, outp: &mut EL4132,
@@ -236,8 +245,20 @@ fn main() {
 
     plc.run(|data, ext| {
         indexer(ext, &mut globals);
-        fb_blink(&mut data.digital, &mut ext.if_blink);
+        fb_blink(&mut data.dig_in, &mut data.dig_out, &mut ext.if_blink);
         fb_magnet(&mut data.ana_in, &mut data.ana_out, &mut ext.if_magnet,
                   &mut globals.v_magnet);
+
+        if data.motor.mot_status & 1 != 0 {
+            data.motor.mot_control = 0x1;
+        }
+        if data.motor.mot_status & 2 != 0 {
+            data.motor.mot_target = (globals.v_magnet.current * 10000.) as _;
+        }
+        // let info1 = data.motor.info_data1;
+        // let info2 = data.motor.info_data2;
+        // println!("st = {:#x}, id = {:#x}, {:#x}", data.motor.mot_status & 0xfff,
+                 // info1, info2);
+        println!("pos = {}", data.motor.mot_position & !0);
     });
 }
