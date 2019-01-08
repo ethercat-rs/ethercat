@@ -141,7 +141,7 @@ impl Master {
         })
     }
 
-    pub fn get_slave_info(&self, position: u16) -> Result<SlaveInfo> {
+    pub fn get_slave_info(&self, position: SlavePosition) -> Result<SlaveInfo> {
         let mut data = ec::ec_ioctl_slave_t::default();
         data.position = position;
         ioctl!(self, ec::ioctl::SLAVE, &mut data)?;
@@ -194,7 +194,8 @@ impl Master {
         })
     }
 
-    pub fn configure_slave(&mut self, addr: SlaveAddr, expected: SlaveId) -> Result<SlaveConfig> {
+    pub fn configure_slave(&mut self, addr: SlaveAddr,
+                           expected: SlaveId) -> Result<SlaveConfig> {
         let mut data = ec::ec_ioctl_config_t::default();
         let (alias, pos) = addr.as_pair();
         data.alias = alias;
@@ -205,7 +206,8 @@ impl Master {
         Ok(SlaveConfig { master: self, index: data.config_index })
     }
 
-    pub fn sdo_download<T>(&mut self, position: u16, sdo_index: SdoIndex, data: &T) -> Result<()>
+    pub fn sdo_download<T>(&mut self, position: SlavePosition, sdo_index: SdoIndex,
+                           data: &T) -> Result<()>
     where T: SdoData + ?Sized
     {
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
@@ -220,7 +222,7 @@ impl Master {
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
     }
 
-    pub fn sdo_download_complete(&mut self, position: u16, sdo_index: SdoIndex,
+    pub fn sdo_download_complete(&mut self, position: SlavePosition, sdo_index: SdoIndex,
                                  data: &[u8]) -> Result<()> {
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
             slave_position: position,
@@ -234,7 +236,7 @@ impl Master {
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
     }
 
-    pub fn sdo_upload<'t>(&self, position: u16, sdo_index: SdoIndex,
+    pub fn sdo_upload<'t>(&self, position: SlavePosition, sdo_index: SdoIndex,
                           target: &'t mut [u8]) -> Result<&'t mut [u8]> {
         let mut data = ec::ec_ioctl_slave_sdo_upload_t {
             slave_position: position,

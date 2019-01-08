@@ -8,6 +8,7 @@ pub type Result<T> = io::Result<T>;
 pub type MasterIndex = u32;
 pub type DomainIndex = u32;
 pub type SlaveConfigIndex = u32;
+pub type SlavePosition = u16;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DomainHandle(pub(crate) usize);
