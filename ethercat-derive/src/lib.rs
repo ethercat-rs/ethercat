@@ -25,7 +25,7 @@
 
 extern crate proc_macro;  // needed even in 2018
 
-use proc_macro::TokenStream;
+use self::proc_macro::TokenStream;
 use syn::parse_macro_input;
 use quote::quote;
 use quote::ToTokens;
