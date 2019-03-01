@@ -1,15 +1,18 @@
 [package]
 name = "ethercat-plc"
+description = "Tools to build a PLC like program using the ethercat crate"
+keywords = ["ethercat", "plc", "automation"]
 version = "0.1.0"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
+license = "GPL-2.0+"
 edition = "2018"
 
 [dependencies]
-log = "0.4"
-libc = "0.2"
-time = "0.1"
+log = "0.4.6"
+libc = "0.2.49"
+time = "0.1.42"
 mlzlog = "0.5.1"
-byteorder = "1.2"
-crossbeam-channel = "0.3.6"
-ethercat = { path = "../ethercat" }
-ethercat-derive = { path = "../ethercat-derive" }
+byteorder = "1.3.1"
+crossbeam-channel = "0.3.8"
+ethercat = { path = "../ethercat", version = "0.1.0" }
+ethercat-derive = { path = "../ethercat-derive", version = "0.1.0" }

@@ -1,11 +1,14 @@
 [package]
 name = "ethercat-sys"
+description = "Binding to the Etherlab open-source EtherCAT master"
+keywords = ["ethercat", "master", "etherlab", "binding"]
 version = "0.1.0"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
+license = "GPL-2.0+"
 edition = "2018"
 
 [dependencies]
-ioctl-sys = "0.5"
+ioctl-sys = "0.5.2"
 
 [build-dependencies]
-bindgen = "0.46.0"
+bindgen = "0.47.3"
