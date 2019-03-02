@@ -91,6 +91,7 @@ impl PlcBuilder {
 
         // XXX
         // master.sdo_download(1, SdoIndex::new(0x1011, 1), &0x64616F6Cu32)?;
+        // master.sdo_download(2, SdoIndex::new(0x1011, 1), &0x64616F6Cu32)?;
 
         let slave_ids = P::get_slave_ids();
         let slave_pdos = P::get_slave_pdos();
@@ -210,9 +211,11 @@ impl<P: ProcessImage, E: ExternImage> Plc<P, E> {
             }
 
             // wait until next cycle
+            let now = precise_time_ns();
             cycle_start += self.sleep;
-            let sleep_ns = cycle_start - precise_time_ns();
-            thread::sleep(Duration::from_nanos(sleep_ns));
+            if cycle_start > now {
+                thread::sleep(Duration::from_nanos(cycle_start - now));
+            }
         }
     }
 

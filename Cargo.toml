@@ -6,8 +6,17 @@ version = "0.1.0"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
+[[bin]]
+name = "demo"
+path = "src/demo.rs"
+
+[[bin]]
+name = "sync"
+path = "src/sync.rs"
+
 [dependencies]
 byteorder = "1.2"
+time = "0.1.42"
 ethercat = { path = "ethercat" }
 ethercat-plc = { path = "ethercat-plc" }
 ethercat-derive = { path = "ethercat-derive" }

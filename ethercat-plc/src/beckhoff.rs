@@ -114,7 +114,7 @@ pub struct EL7047_Positioning {
     #[entry(0x1A01, 0x6000, 12)] pub enc_latch: u32,
     #[entry(0x1A03, 0x6010, 1)]  pub mot_status: u16,
     #[entry(0x1A07, 0x6020, 1)]  pub pos_status: u16,
-    #[entry(0x1A07, 0x6020, 11)] pub act_pos: u32,
+    #[entry(0x1A07, 0x6020, 11)] pub act_pos: i32,
     #[entry(0x1A07, 0x6020, 21)] pub act_velo: u16,
     #[entry(0x1A07, 0x6020, 22)] pub drv_time: u32,
 
