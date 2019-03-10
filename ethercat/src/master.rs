@@ -23,6 +23,7 @@ use std::fs::{File, OpenOptions};
 use std::ffi::CStr;
 use std::io::{Error, ErrorKind};
 use std::os::unix::io::AsRawFd;
+use std::os::raw::c_ulong;
 use crate::ec;
 use crate::Result;
 use crate::types::*;
@@ -81,8 +82,8 @@ impl Master {
     pub fn domain_data(&mut self, index: DomainHandle) -> &mut [u8] {
         let (ix, mut offset, mut size) = self.domains[index.0];
         if size == 0 {
-            size = ioctl!(self, ec::ioctl::DOMAIN_SIZE, ix as u64).unwrap() as usize;
-            offset = ioctl!(self, ec::ioctl::DOMAIN_OFFSET, ix as u64).unwrap() as usize;
+            size = ioctl!(self, ec::ioctl::DOMAIN_SIZE, ix as c_ulong).unwrap() as usize;
+            offset = ioctl!(self, ec::ioctl::DOMAIN_OFFSET, ix as c_ulong).unwrap() as usize;
             self.domains[index.0] = (ix, offset, size);
         }
         &mut self.map.as_mut().expect("master is not activated")[offset..offset+size]
@@ -115,7 +116,7 @@ impl Master {
 
     pub fn send(&mut self) -> Result<usize> {
         let mut sent = 0;
-        ioctl!(self, ec::ioctl::SEND, &mut sent as *mut _ as u64)?;
+        ioctl!(self, ec::ioctl::SEND, &mut sent as *mut _ as c_ulong)?;
         Ok(sent)
     }
 
@@ -487,7 +488,7 @@ impl<'m> SlaveConfig<'m> {
 
 impl<'m> Domain<'m> {
     pub fn size(&self) -> Result<usize> {
-        ioctl!(self.master, ec::ioctl::DOMAIN_SIZE, self.index as u64).map(|v| v as usize)
+        ioctl!(self.master, ec::ioctl::DOMAIN_SIZE, self.index as c_ulong).map(|v| v as usize)
     }
 
     pub fn state(&self) -> Result<DomainState> {
@@ -505,10 +506,10 @@ impl<'m> Domain<'m> {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        ioctl!(self.master, ec::ioctl::DOMAIN_PROCESS, self.index as u64).map(|_| ())
+        ioctl!(self.master, ec::ioctl::DOMAIN_PROCESS, self.index as c_ulong).map(|_| ())
     }
 
     pub fn queue(&mut self) -> Result<()> {
-        ioctl!(self.master, ec::ioctl::DOMAIN_QUEUE, self.index as u64).map(|_| ())
+        ioctl!(self.master, ec::ioctl::DOMAIN_QUEUE, self.index as c_ulong).map(|_| ())
     }
 }
