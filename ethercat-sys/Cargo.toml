@@ -11,4 +11,4 @@ edition = "2018"
 ioctl-sys = "0.5.2"
 
 [build-dependencies]
-bindgen = "0.47.3"
+bindgen = "0.49.0"
