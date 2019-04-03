@@ -2,7 +2,7 @@
 name = "ethercat-sys"
 description = "Binding to the Etherlab open-source EtherCAT master"
 keywords = ["ethercat", "master", "etherlab", "binding"]
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 license = "GPL-2.0+"
 edition = "2018"
