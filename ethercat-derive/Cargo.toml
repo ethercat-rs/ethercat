@@ -3,7 +3,7 @@ name = "ethercat-derive"
 description = "Automatic deriving of traits in the ethercat-plc crate"
 version = "0.1.1"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
-license = "GPL-2.0+"
+license = "MIT/Apache-2.0"
 edition = "2018"
 
 [lib]

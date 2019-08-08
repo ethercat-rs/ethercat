@@ -4,7 +4,7 @@ description = "Tools to build a PLC like program using the ethercat crate"
 keywords = ["ethercat", "plc", "automation"]
 version = "0.1.2"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
-license = "GPL-2.0+"
+license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
