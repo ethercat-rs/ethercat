@@ -3,8 +3,6 @@
 
 //! Support for deriving ethercat-plc traits for a struct.
 
-#![recursion_limit="128"]
-
 extern crate proc_macro;  // needed even in 2018
 
 use self::proc_macro::TokenStream;
@@ -52,11 +50,10 @@ pub fn derive_single_process_image(input: TokenStream) -> TokenStream {
                         attr.parse_meta().unwrap()
                     {
                         let (pdo_str, ix, subix) = if nested.len() == 2 {
-                            ("".into(), nested[0].clone(), nested[1].clone())
+                            ("".into(), &nested[0], &nested[1])
                         } else {
                             let pdo = &nested[0];
-                            (quote!(#pdo).to_string(), nested[1].clone(),
-                             nested[2].clone())
+                            (quote!(#pdo).to_string(), &nested[1], &nested[2])
                         };
                         pdo_regs.push(quote! {
                             (ethercat::PdoEntryIndex { index: #ix,
@@ -144,21 +141,13 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     let ident = input.ident;
 
-    let mut slave_count = vec![];
-    let mut slave_ids = vec![];
-    let mut slave_pdos = vec![];
-    let mut slave_regs = vec![];
     let mut slave_sdos = vec![];
+    let mut slave_tys = vec![];
 
     if let syn::Data::Struct(syn::DataStruct {
         fields: syn::Fields::Named(flds), ..
     }) = input.data {
         for field in flds.named {
-            let ty = field.ty;
-            slave_count.push(quote!( #ty :: SLAVE_COUNT ));
-            slave_ids.push(quote!( res.extend(#ty::get_slave_ids()); ));
-            slave_pdos.push(quote!( res.extend(#ty::get_slave_pdos()); ));
-            slave_regs.push(quote!( res.extend(#ty::get_slave_regs()); ));
             let mut sdos = vec![];
             for attr in &field.attrs {
                 if attr.path.is_ident("sdo") {
@@ -168,7 +157,7 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
                         let ix = &nested[0];
                         let subix = &nested[1];
                         let data_expr = &nested[2];
-                        let data_str = if let syn::NestedMeta::Literal(syn::Lit::Str(s)) = data_expr {
+                        let data_str = if let syn::NestedMeta::Lit(syn::Lit::Str(s)) = data_expr {
                             syn::parse_str::<syn::Expr>(&s.value()).unwrap()
                         } else {
                             panic!("invalid SDO value, must be stringified")
@@ -180,11 +169,13 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
                     }
                 }
             }
+            let ty = field.ty;
             if sdos.is_empty() {
                 slave_sdos.push(quote!( res.extend(#ty::get_slave_sdos()); ));
             } else {
                 slave_sdos.push(quote!( res.push(vec![#( #sdos ),*]); ));
             }
+            slave_tys.push(ty);
         }
     } else {
         return compile_error("only structs with named fields can be a process image");
@@ -193,15 +184,15 @@ pub fn derive_process_image(input: TokenStream) -> TokenStream {
     let generated = quote! {
         #[automatically_derived]
         impl ProcessImage for #ident {
-            const SLAVE_COUNT: usize = #(#slave_count)+*;
+            const SLAVE_COUNT: usize = #( #slave_tys::SLAVE_COUNT )+*;
             fn get_slave_ids() -> Vec<ethercat::SlaveId> {
-                let mut res = vec![]; #(#slave_ids)* res
+                let mut res = vec![]; #( res.extend(#slave_tys::get_slave_ids()); )* res
             }
             fn get_slave_pdos() -> Vec<Option<Vec<ethercat::SyncInfo<'static>>>> {
-                let mut res = vec![]; #(#slave_pdos)* res
+                let mut res = vec![]; #( res.extend(#slave_tys::get_slave_pdos()); )* res
             }
             fn get_slave_regs() -> Vec<Vec<(ethercat::PdoEntryIndex, ethercat::Offset)>> {
-                let mut res = vec![]; #(#slave_regs)* res
+                let mut res = vec![]; #( res.extend(#slave_tys::get_slave_regs()); )* res
             }
             fn get_slave_sdos() -> Vec<Vec<(ethercat::SdoIndex, Box<dyn ethercat::SdoData>)>> {
                 let mut res = vec![]; #(#slave_sdos)* res
