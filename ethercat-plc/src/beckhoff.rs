@@ -33,6 +33,18 @@ pub struct EL1502 {
 
 #[repr(C, packed)]
 #[derive(SlaveProcessImage)]
+#[pdos(3, Input,  0x1A02)]
+#[pdos(2, Output, 0x1602)]
+pub struct EL1502_UpDown {
+    #[entry(0x1A02, 0x6020, 1)]  pub status: u16,
+    #[entry(0x1A02, 0x6020, 17)] pub value: u32,
+
+    #[entry(0x1602, 0x7020, 1)]  pub control: u16,
+    #[entry(0x1602, 0x7020, 17)] pub setvalue: u32,
+}
+
+#[repr(C, packed)]
+#[derive(SlaveProcessImage)]
 pub struct EL1859 {
     #[entry(0x6000, 1)]  pub input: u8,
     #[entry(0x7080, 1)]  pub output: u8,
