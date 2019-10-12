@@ -2,7 +2,7 @@
 
 [package]
 name = "ethercat-testplc"
-version = "0.1.0"
+version = "0.1.3"
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
 edition = "2018"
 
