@@ -2,10 +2,12 @@
 
 [package]
 name = "ethercat"
-description = "Binding to the Etherlab open-source EtherCAT master"
-keywords = ["ethercat", "master", "etherlab"]
 version = "0.1.3"
+description = "Binding to the IgH/Etherlab open-source EtherCAT master"
+keywords = ["ethercat", "master", "etherlab"]
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
+repository = "https://github.com/ethercat-rs/ethercat"
+readme = "README.md"
 license = "MIT/Apache-2.0"
 edition = "2018"
 
