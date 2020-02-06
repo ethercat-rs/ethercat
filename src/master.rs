@@ -1,14 +1,14 @@
 // Part of ethercat-rs. Copyright 2018-2020 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-use std::fs::{File, OpenOptions};
-use std::ffi::CStr;
-use std::io::{Error, ErrorKind};
-use std::os::unix::io::AsRawFd;
-use std::os::raw::c_ulong;
 use crate::ec;
-use crate::Result;
 use crate::types::*;
+use crate::Result;
+use std::ffi::CStr;
+use std::fs::{File, OpenOptions};
+use std::io::{Error, ErrorKind};
+use std::os::raw::c_ulong;
+use std::os::unix::io::AsRawFd;
 
 macro_rules! ioctl {
     ($m:expr, $f:expr) => { ioctl!($m, $f,) };
@@ -38,13 +38,21 @@ impl Master {
             ioctl_version_magic: 0,
             master_count: 0,
         };
-        let master = Master { file, map: None, domains: vec![] };
+        let master = Master {
+            file,
+            map: None,
+            domains: vec![],
+        };
         ioctl!(master, ec::ioctl::MODULE, &mut module_info)?;
         if module_info.ioctl_version_magic != ec::EC_IOCTL_VERSION_MAGIC {
-            Err(Error::new(ErrorKind::Other,
-                           format!("module version mismatch: expected {}, found {}",
-                                   ec::EC_IOCTL_VERSION_MAGIC,
-                                   module_info.ioctl_version_magic)))
+            Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "module version mismatch: expected {}, found {}",
+                    ec::EC_IOCTL_VERSION_MAGIC,
+                    module_info.ioctl_version_magic
+                ),
+            ))
         } else {
             ioctl!(master, ec::ioctl::REQUEST)?;
             Ok(master)
@@ -58,7 +66,10 @@ impl Master {
     }
 
     pub fn domain(&self, index: DomainHandle) -> Domain {
-        Domain { master: self, index: self.domains[index.0].0 }
+        Domain {
+            master: self,
+            index: self.domains[index.0].0,
+        }
     }
 
     pub fn domain_data(&mut self, index: DomainHandle) -> &mut [u8] {
@@ -68,7 +79,7 @@ impl Master {
             offset = ioctl!(self, ec::ioctl::DOMAIN_OFFSET, ix as c_ulong).unwrap() as usize;
             self.domains[index.0] = (ix, offset, size);
         }
-        &mut self.map.as_mut().expect("master is not activated")[offset..offset+size]
+        &mut self.map.as_mut().expect("master is not activated")[offset..offset + size]
     }
 
     pub fn activate(&mut self) -> Result<()> {
@@ -168,18 +179,27 @@ impl Master {
             ports[i].delay_to_next_dc = data.ports[i].delay_to_next_dc;
         }
         Ok(SlaveInfo {
-            name: unsafe { CStr::from_ptr(data.name.as_ptr()).to_string_lossy().into_owned() },
+            name: unsafe {
+                CStr::from_ptr(data.name.as_ptr())
+                    .to_string_lossy()
+                    .into_owned()
+            },
             ring_pos: data.position,
-            id: SlaveId { vendor_id: data.vendor_id, product_code: data.product_code },
-            rev: SlaveRev { revision_number: data.revision_number,
-                            serial_number: data.serial_number },
+            id: SlaveId {
+                vendor_id: data.vendor_id,
+                product_code: data.product_code,
+            },
+            rev: SlaveRev {
+                revision_number: data.revision_number,
+                serial_number: data.serial_number,
+            },
             alias: data.alias,
             current_on_ebus: data.current_on_ebus,
             al_state: AlState::from(data.al_state as u32),
             error_flag: data.error_flag,
             sync_count: data.sync_count,
             sdo_count: data.sdo_count,
-            ports
+            ports,
         })
     }
 
@@ -190,16 +210,21 @@ impl Master {
         Ok(ConfigInfo {
             alias: data.alias,
             position: data.position,
-            id: SlaveId { vendor_id: data.vendor_id, product_code: data.product_code },
-            slave_position: if data.slave_position == -1 { None } else {
-                Some(data.slave_position as u32) },
+            id: SlaveId {
+                vendor_id: data.vendor_id,
+                product_code: data.product_code,
+            },
+            slave_position: if data.slave_position == -1 {
+                None
+            } else {
+                Some(data.slave_position as u32)
+            },
             sdo_count: data.sdo_count,
             idn_count: data.idn_count,
         })
     }
 
-    pub fn configure_slave(&mut self, addr: SlaveAddr,
-                           expected: SlaveId) -> Result<SlaveConfig> {
+    pub fn configure_slave(&mut self, addr: SlaveAddr, expected: SlaveId) -> Result<SlaveConfig> {
         let mut data = ec::ec_ioctl_config_t::default();
         let (alias, pos) = addr.as_pair();
         data.alias = alias;
@@ -207,12 +232,20 @@ impl Master {
         data.vendor_id = expected.vendor_id;
         data.product_code = expected.product_code;
         ioctl!(self, ec::ioctl::CREATE_SLAVE_CONFIG, &mut data)?;
-        Ok(SlaveConfig { master: self, index: data.config_index })
+        Ok(SlaveConfig {
+            master: self,
+            index: data.config_index,
+        })
     }
 
-    pub fn sdo_download<T>(&mut self, position: SlavePosition, sdo_index: SdoIndex,
-                           data: &T) -> Result<()>
-    where T: SdoData + ?Sized
+    pub fn sdo_download<T>(
+        &mut self,
+        position: SlavePosition,
+        sdo_index: SdoIndex,
+        data: &T,
+    ) -> Result<()>
+    where
+        T: SdoData + ?Sized,
     {
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
             slave_position: position,
@@ -226,8 +259,12 @@ impl Master {
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
     }
 
-    pub fn sdo_download_complete(&mut self, position: SlavePosition, sdo_index: SdoIndex,
-                                 data: &[u8]) -> Result<()> {
+    pub fn sdo_download_complete(
+        &mut self,
+        position: SlavePosition,
+        sdo_index: SdoIndex,
+        data: &[u8],
+    ) -> Result<()> {
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
             slave_position: position,
             sdo_index: sdo_index.index,
@@ -240,8 +277,12 @@ impl Master {
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
     }
 
-    pub fn sdo_upload<'t>(&self, position: SlavePosition, sdo_index: SdoIndex,
-                          target: &'t mut [u8]) -> Result<&'t mut [u8]> {
+    pub fn sdo_upload<'t>(
+        &self,
+        position: SlavePosition,
+        sdo_index: SdoIndex,
+        target: &'t mut [u8],
+    ) -> Result<&'t mut [u8]> {
         let mut data = ec::ec_ioctl_slave_sdo_upload_t {
             slave_position: position,
             sdo_index: sdo_index.index,
@@ -272,7 +313,10 @@ impl<'m> SlaveConfig<'m> {
 
     pub fn state(&self) -> Result<SlaveConfigState> {
         let mut state = ec::ec_slave_config_state_t::default();
-        let mut data = ec::ec_ioctl_sc_state_t { config_index: self.index, state: &mut state };
+        let mut data = ec::ec_ioctl_sc_state_t {
+            config_index: self.index,
+            state: &mut state,
+        };
         ioctl!(self.master, ec::ioctl::SC_STATE, &mut data)?;
         Ok(SlaveConfigState {
             online: state.online() != 0,
@@ -362,7 +406,11 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_ADD_ENTRY, &mut data).map(|_| ())
     }
 
-    pub fn register_pdo_entry(&mut self, index: PdoEntryIndex, domain: DomainHandle) -> Result<Offset> {
+    pub fn register_pdo_entry(
+        &mut self,
+        index: PdoEntryIndex,
+        domain: DomainHandle,
+    ) -> Result<Offset> {
         let mut data = ec::ec_ioctl_reg_pdo_entry_t {
             config_index: self.index,
             entry_index: index.index,
@@ -371,11 +419,19 @@ impl<'m> SlaveConfig<'m> {
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_ENTRY, &mut data)?;
-        Ok(Offset { byte: byte as usize, bit: data.bit_position })
+        Ok(Offset {
+            byte: byte as usize,
+            bit: data.bit_position,
+        })
     }
 
-    pub fn register_pdo_entry_by_position(&mut self, sync_index: SmIndex, pdo_pos: u32, entry_pos: u32,
-                                          domain: DomainHandle) -> Result<Offset> {
+    pub fn register_pdo_entry_by_position(
+        &mut self,
+        sync_index: SmIndex,
+        pdo_pos: u32,
+        entry_pos: u32,
+        domain: DomainHandle,
+    ) -> Result<Offset> {
         let mut data = ec::ec_ioctl_reg_pdo_pos_t {
             config_index: self.index,
             sync_index: sync_index as u32,
@@ -385,11 +441,20 @@ impl<'m> SlaveConfig<'m> {
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_POS, &mut data)?;
-        Ok(Offset { byte: byte as usize, bit: data.bit_position })
+        Ok(Offset {
+            byte: byte as usize,
+            bit: data.bit_position,
+        })
     }
 
-    pub fn config_dc(&mut self, assign_activate: u16, sync0_cycle_time: u32, sync0_shift_time: i32,
-                     sync1_cycle_time: u32, sync1_shift_time: i32) -> Result<()> {
+    pub fn config_dc(
+        &mut self,
+        assign_activate: u16,
+        sync0_cycle_time: u32,
+        sync0_shift_time: i32,
+        sync1_cycle_time: u32,
+        sync1_shift_time: i32,
+    ) -> Result<()> {
         let mut data = ec::ec_ioctl_config_t::default();
         data.config_index = self.index;
         data.dc_assign_activate = assign_activate;
@@ -401,7 +466,8 @@ impl<'m> SlaveConfig<'m> {
     }
 
     pub fn add_sdo<T>(&mut self, index: SdoIndex, data: &T) -> Result<()>
-    where T: SdoData + ?Sized
+    where
+        T: SdoData + ?Sized,
     {
         let mut data = ec::ec_ioctl_sc_sdo_t {
             config_index: self.index,
@@ -426,7 +492,13 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_SDO, &mut data).map(|_| ())
     }
 
-    pub fn config_idn(&mut self, drive_no: u8, idn: u16, al_state: AlState, data: &[u8]) -> Result<()> {
+    pub fn config_idn(
+        &mut self,
+        drive_no: u8,
+        idn: u16,
+        al_state: AlState,
+        data: &[u8],
+    ) -> Result<()> {
         let mut data = ec::ec_ioctl_sc_idn_t {
             config_index: self.index,
             drive_no,
@@ -488,7 +560,12 @@ impl<'m> Domain<'m> {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        ioctl!(self.master, ec::ioctl::DOMAIN_PROCESS, self.index as c_ulong).map(|_| ())
+        ioctl!(
+            self.master,
+            ec::ioctl::DOMAIN_PROCESS,
+            self.index as c_ulong
+        )
+        .map(|_| ())
     }
 
     pub fn queue(&mut self) -> Result<()> {

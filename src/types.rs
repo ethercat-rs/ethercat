@@ -1,9 +1,9 @@
 // Part of ethercat-rs. Copyright 2018-2020 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-use std::io;
-use derive_new::new;
 use crate::ec;
+use derive_new::new;
+use std::io;
 
 pub type Error = io::Error;
 pub type Result<T> = io::Result<T>;
@@ -16,14 +16,12 @@ pub type SlavePosition = u16;
 #[derive(Debug, Clone, Copy)]
 pub struct DomainHandle(pub(crate) usize);
 
-
 /// An EtherCAT slave identification, consisting of vendor ID and product code.
 #[derive(Debug, Clone, Copy, new)]
 pub struct SlaveId {
     pub vendor_id: u32,
     pub product_code: u32,
 }
-
 
 /// An EtherCAT slave revision identification.
 #[derive(Debug, Clone, Copy, new)]
@@ -32,13 +30,12 @@ pub struct SlaveRev {
     pub serial_number: u32,
 }
 
-
 /// An EtherCAT slave, which is specified either by absolute position in the
 /// ring or by offset from a given alias.
 #[derive(Clone, Copy)]
 pub enum SlaveAddr {
     ByPos(u16),
-    ByAlias(u16, u16)
+    ByAlias(u16, u16),
 }
 
 impl SlaveAddr {
@@ -175,11 +172,21 @@ pub struct SyncInfo<'a> {
 
 impl SyncInfo<'static> {
     pub const fn input(index: SmIndex, pdos: &'static [PdoInfo<'static>]) -> Self {
-        SyncInfo { index, direction: SyncDirection::Input, watchdog_mode: WatchdogMode::Default, pdos }
+        SyncInfo {
+            index,
+            direction: SyncDirection::Input,
+            watchdog_mode: WatchdogMode::Default,
+            pdos,
+        }
     }
 
     pub const fn output(index: SmIndex, pdos: &'static [PdoInfo<'static>]) -> Self {
-        SyncInfo { index, direction: SyncDirection::Output, watchdog_mode: WatchdogMode::Default, pdos }
+        SyncInfo {
+            index,
+            direction: SyncDirection::Output,
+            watchdog_mode: WatchdogMode::Default,
+            pdos,
+        }
     }
 }
 
@@ -193,7 +200,10 @@ const NO_ENTRIES: &[PdoEntryInfo] = &[];
 
 impl PdoInfo<'static> {
     pub const fn default(index: PdoIndex) -> PdoInfo<'static> {
-        PdoInfo { index, entries: NO_ENTRIES }
+        PdoInfo {
+            index,
+            entries: NO_ENTRIES,
+        }
     }
 }
 
@@ -224,22 +234,30 @@ impl From<u32> for AlState {
 }
 
 pub trait SdoData {
-    fn data_ptr(&self) -> *const u8 { self as *const _ as _ }
-    fn data_size(&self) -> usize { std::mem::size_of_val(self) }
+    fn data_ptr(&self) -> *const u8 {
+        self as *const _ as _
+    }
+    fn data_size(&self) -> usize {
+        std::mem::size_of_val(self)
+    }
 }
 
-impl SdoData for u8 { }
-impl SdoData for u16 { }
-impl SdoData for u32 { }
-impl SdoData for u64 { }
-impl SdoData for i8 { }
-impl SdoData for i16 { }
-impl SdoData for i32 { }
-impl SdoData for i64 { }
+impl SdoData for u8 {}
+impl SdoData for u16 {}
+impl SdoData for u32 {}
+impl SdoData for u64 {}
+impl SdoData for i8 {}
+impl SdoData for i16 {}
+impl SdoData for i32 {}
+impl SdoData for i64 {}
 
 impl SdoData for &'_ [u8] {
-    fn data_ptr(&self) -> *const u8 { self.as_ptr() }
-    fn data_size(&self) -> usize { self.len() }
+    fn data_ptr(&self) -> *const u8 {
+        self.as_ptr()
+    }
+    fn data_size(&self) -> usize {
+        self.len()
+    }
 }
 
 #[derive(Debug)]

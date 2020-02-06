@@ -7,11 +7,11 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use ioctl_sys::{ioctl, io, ioc, ior, iow, iorw};
+use ioctl_sys::{io, ioc, ioctl, ior, iorw, iow};
 
 pub mod ioctl {
-    use super::*;
     use super::EC_IOCTL_TYPE as EC;
+    use super::*;
 
     ioctl!(read      MODULE               with EC, 0x00; ec_ioctl_module_t);
     ioctl!(read      MASTER               with EC, 0x01; ec_ioctl_master_t);
