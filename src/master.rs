@@ -88,7 +88,7 @@ impl Master {
 
         self.map = unsafe {
             memmap::MmapOptions::new()
-                .len(data.process_data_size)
+                .len(data.process_data_size as usize)
                 .map_mut(&self.file)
                 .map(Some)?
         };
@@ -252,7 +252,7 @@ impl Master {
             sdo_index: sdo_index.index,
             sdo_entry_subindex: sdo_index.subindex,
             complete_access: 0,
-            data_size: data.data_size(),
+            data_size: data.data_size() as u64,
             data: data.data_ptr(),
             abort_code: 0,
         };
@@ -270,7 +270,7 @@ impl Master {
             sdo_index: sdo_index.index,
             sdo_entry_subindex: sdo_index.subindex,
             complete_access: 1,
-            data_size: data.len(),
+            data_size: data.len() as u64,
             data: data.as_ptr(),
             abort_code: 0,
         };
@@ -287,13 +287,13 @@ impl Master {
             slave_position: position,
             sdo_index: sdo_index.index,
             sdo_entry_subindex: sdo_index.subindex,
-            target_size: target.len(),
+            target_size: target.len() as u64,
             target: target.as_mut_ptr(),
             data_size: 0,
             abort_code: 0,
         };
         ioctl!(self, ec::ioctl::SLAVE_SDO_UPLOAD, &mut data)?;
-        Ok(&mut target[..data.data_size])
+        Ok(&mut target[..data.data_size as usize])
     }
 
     // XXX missing: get_sync_manager, get_pdo, get_pdo_entry, write_idn, read_idn,
@@ -474,7 +474,7 @@ impl<'m> SlaveConfig<'m> {
             index: index.index,
             subindex: index.subindex,
             data: data.data_ptr(),
-            size: data.data_size(),
+            size: data.data_size() as u64,
             complete_access: 0,
         };
         ioctl!(self.master, ec::ioctl::SC_SDO, &mut data).map(|_| ())
@@ -486,7 +486,7 @@ impl<'m> SlaveConfig<'m> {
             index: index.index,
             subindex: index.subindex,
             data: data.as_ptr(),
-            size: data.len(),
+            size: data.len() as u64,
             complete_access: 1,
         };
         ioctl!(self.master, ec::ioctl::SC_SDO, &mut data).map(|_| ())
@@ -505,12 +505,12 @@ impl<'m> SlaveConfig<'m> {
             idn,
             al_state: al_state as u32,
             data: data.as_ptr(),
-            size: data.len(),
+            size: data.len() as u64,
         };
         ioctl!(self.master, ec::ioctl::SC_IDN, &mut data).map(|_| ())
     }
 
-    pub fn set_emerg_size(&mut self, elements: usize) -> Result<()> {
+    pub fn set_emerg_size(&mut self, elements: u64) -> Result<()> {
         let mut data = ec::ec_ioctl_sc_emerg_t::default();
         data.config_index = self.index;
         data.size = elements;
