@@ -1,20 +1,30 @@
 // Part of ethercat-rs. Copyright 2018-2020 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-use crate::ec;
-use crate::types::*;
-use crate::Result;
-use std::ffi::CStr;
-use std::fs::{File, OpenOptions};
-use std::io::{Error, ErrorKind};
-use std::os::raw::c_ulong;
-use std::os::unix::io::AsRawFd;
+use crate::{ec, types::*, Result};
+use std::{
+    ffi::CStr,
+    fs::{File, OpenOptions},
+    io::{Error, ErrorKind},
+    os::raw::c_ulong,
+    os::unix::io::AsRawFd,
+};
 
 macro_rules! ioctl {
     ($m:expr, $f:expr) => { ioctl!($m, $f,) };
     ($m:expr, $f:expr, $($arg:tt)*) => {{
         let res = unsafe { $f($m.file.as_raw_fd(), $($arg)*) };
-        if res < 0 { Err(Error::last_os_error()) } else { Ok(res) }
+        res.map_err(|e|{
+            match e {
+                nix::Error::Sys(err_no) => Error::new(ErrorKind::Other, err_no.desc()),
+                nix::Error::UnsupportedOperation => Error::new(ErrorKind::Other, "UnsupportedOperation"),
+                nix::Error::InvalidPath | nix::Error::InvalidUtf8 => {
+                    // should never happen
+                    debug_assert!(false);
+                    Error::new(ErrorKind::Other, e)
+                }
+            }
+        })
     }}
 }
 
