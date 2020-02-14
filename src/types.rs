@@ -54,7 +54,7 @@ pub struct Offset {
     pub bit: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MasterInfo {
     pub slave_count: u32,
     pub link_up: bool,
@@ -62,14 +62,14 @@ pub struct MasterInfo {
     pub app_time: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MasterState {
     pub slaves_responding: u32,
     pub al_states: u8,
     pub link_up: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConfigInfo {
     pub alias: u16,
     pub position: u16,
@@ -81,7 +81,7 @@ pub struct ConfigInfo {
     // syncs[*], watchdog_*, dc_*
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SlaveInfo {
     pub name: String,
     pub ring_pos: u16,
@@ -126,7 +126,7 @@ pub struct SlavePortInfo {
     pub delay_to_next_dc: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SlaveConfigState {
     pub online: bool,
     pub operational: bool,
@@ -156,13 +156,13 @@ pub struct PdoEntryIndex {
     pub subindex: u8,
 }
 
-#[derive(Clone, Copy, new)]
+#[derive(Debug, Clone, Copy, new)]
 pub struct SdoIndex {
     pub index: u16,
     pub subindex: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct SyncInfo<'a> {
     pub index: SmIndex,
     pub direction: SyncDirection,
@@ -190,7 +190,7 @@ impl<'a> SyncInfo<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PdoInfo<'a> {
     pub index: PdoIndex,
     pub entries: &'a [PdoEntryInfo],
@@ -207,13 +207,13 @@ impl<'a> PdoInfo<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PdoEntryInfo {
     pub index: PdoEntryIndex,
     pub bit_length: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AlState {
     Init = 1,
     Preop = 2,
@@ -260,7 +260,7 @@ impl SdoData for &'_ [u8] {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DomainState {
     pub working_counter: u32,
     pub wc_state: WcState,
