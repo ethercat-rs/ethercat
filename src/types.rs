@@ -3,18 +3,42 @@
 
 use crate::ec;
 use derive_new::new;
-use std::io;
+use std::{io, os::raw::c_ulong};
 
 pub type Error = io::Error;
 pub type Result<T> = io::Result<T>;
 
 pub type MasterIndex = u32;
-pub type DomainIndex = u32;
-pub type SlaveConfigIndex = u32;
-pub type SlavePosition = u16;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct DomainIndex(pub(crate) usize);
+
+impl From<i32> for DomainIndex {
+    fn from(v: i32) -> Self {
+        Self(v as usize)
+    }
+}
+
+impl From<DomainIndex> for c_ulong {
+    fn from(idx: DomainIndex) -> Self {
+        idx.0 as c_ulong
+    }
+}
+
+impl From<DomainIndex> for u32 {
+    fn from(idx: DomainIndex) -> Self {
+        idx.0 as u32
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
-pub struct DomainHandle(pub(crate) usize);
+pub(crate) struct DomainDataPlacement {
+    pub offset: usize,
+    pub size: usize,
+}
+
+pub type SlaveConfigIndex = u32;
+pub type SlavePosition = u16;
 
 /// An EtherCAT slave identification, consisting of vendor ID and product code.
 #[derive(Debug, Clone, Copy, new)]
@@ -39,8 +63,8 @@ pub enum SlaveAddr {
 }
 
 impl SlaveAddr {
-    pub(crate) fn as_pair(&self) -> (u16, u16) {
-        match *self {
+    pub(crate) fn as_pair(self) -> (u16, u16) {
+        match self {
             SlaveAddr::ByPos(x) => (0, x),
             SlaveAddr::ByAlias(x, y) => (x, y),
         }
