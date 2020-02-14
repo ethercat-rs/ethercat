@@ -170,8 +170,8 @@ pub struct SyncInfo<'a> {
     pub pdos: &'a [PdoInfo<'a>],
 }
 
-impl SyncInfo<'static> {
-    pub const fn input(index: SmIndex, pdos: &'static [PdoInfo<'static>]) -> Self {
+impl<'a> SyncInfo<'a> {
+    pub const fn input(index: SmIndex, pdos: &'a [PdoInfo<'a>]) -> Self {
         SyncInfo {
             index,
             direction: SyncDirection::Input,
@@ -180,7 +180,7 @@ impl SyncInfo<'static> {
         }
     }
 
-    pub const fn output(index: SmIndex, pdos: &'static [PdoInfo<'static>]) -> Self {
+    pub const fn output(index: SmIndex, pdos: &'a [PdoInfo<'a>]) -> Self {
         SyncInfo {
             index,
             direction: SyncDirection::Output,
@@ -198,8 +198,8 @@ pub struct PdoInfo<'a> {
 
 const NO_ENTRIES: &[PdoEntryInfo] = &[];
 
-impl PdoInfo<'static> {
-    pub const fn default(index: PdoIndex) -> PdoInfo<'static> {
+impl<'a> PdoInfo<'a> {
+    pub const fn default(index: PdoIndex) -> PdoInfo<'a> {
         PdoInfo {
             index,
             entries: NO_ENTRIES,
