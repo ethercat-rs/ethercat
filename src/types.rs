@@ -72,7 +72,7 @@ impl SlaveAddr {
 }
 
 /// Offset of a PDO entry in the domain image.
-#[derive(Debug, Default, PartialEq, Eq, new)]
+#[derive(Debug, Default, PartialEq, Eq, Hash, new)]
 pub struct Offset {
     pub byte: usize,
     pub bit: u32,
@@ -174,13 +174,13 @@ pub enum WatchdogMode {
 pub type SmIndex = u8;
 pub type PdoIndex = u16;
 
-#[derive(Debug, Clone, Copy, new)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, new)]
 pub struct PdoEntryIndex {
     pub index: u16,
     pub subindex: u8,
 }
 
-#[derive(Debug, Clone, Copy, new)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, new)]
 pub struct SdoIndex {
     pub index: u16,
     pub subindex: u8,
