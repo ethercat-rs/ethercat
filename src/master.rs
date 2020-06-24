@@ -30,10 +30,19 @@ pub struct Domain<'m> {
     index: DomainIndex,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MasterAccess {
+    ReadOnly,
+    ReadWrite,
+}
+
 impl Master {
-    pub fn reserve(index: MasterIndex) -> Result<Self> {
+    pub fn open(index: MasterIndex, access: MasterAccess) -> Result<Self> {
         let devpath = format!("/dev/EtherCAT{}", index);
-        let file = OpenOptions::new().read(true).write(true).open(&devpath)?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(access == MasterAccess::ReadWrite)
+            .open(&devpath)?;
         let mut module_info = ec::ec_ioctl_module_t::default();
         let master = Master {
             file,
@@ -42,18 +51,21 @@ impl Master {
         };
         ioctl!(master, ec::ioctl::MODULE, &mut module_info)?;
         if module_info.ioctl_version_magic != ec::EC_IOCTL_VERSION_MAGIC {
-            Err(Error::new(
+            return Err(Error::new(
                 ErrorKind::Other,
                 format!(
                     "module version mismatch: expected {}, found {}",
                     ec::EC_IOCTL_VERSION_MAGIC,
                     module_info.ioctl_version_magic
                 ),
-            ))
-        } else {
-            ioctl!(master, ec::ioctl::REQUEST)?;
-            Ok(master)
+            ));
         }
+        Ok(master)
+    }
+
+    pub fn reserve(&self) -> Result<()> {
+        ioctl!(self, ec::ioctl::REQUEST)?;
+        Ok(())
     }
 
     pub fn create_domain(&self) -> Result<DomainIndex> {
