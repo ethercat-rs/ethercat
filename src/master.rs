@@ -63,6 +63,13 @@ impl Master {
         Ok(master)
     }
 
+    pub fn master_count() -> Result<usize> {
+        let master = Self::open(0, MasterAccess::ReadOnly)?;
+        let mut module_info = ec::ec_ioctl_module_t::default();
+        ioctl!(master, ec::ioctl::MODULE, &mut module_info)?;
+        Ok(module_info.master_count as usize)
+    }
+
     pub fn reserve(&self) -> Result<()> {
         ioctl!(self, ec::ioctl::REQUEST)?;
         Ok(())
