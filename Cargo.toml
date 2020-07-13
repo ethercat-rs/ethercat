@@ -4,8 +4,8 @@
 name = "ethercat"
 version = "0.1.3"
 description = "Binding to the IgH/Etherlab open-source EtherCAT master"
-keywords = ["ethercat", "master", "etherlab"]
-authors = ["Georg Brandl <g.brandl@fz-juelich.de>"]
+keywords = ["ethercat", "master", "etherlab", "fieldbus", "automation"]
+authors = ["Georg Brandl <g.brandl@fz-juelich.de>", "slowtec GmbH <post@slowtec.de>"]
 repository = "https://github.com/ethercat-rs/ethercat"
 readme = "README.md"
 license = "MIT/Apache-2.0"
@@ -16,3 +16,6 @@ libc = "0.2.49"
 memmap = "0.7.0"
 derive-new = "0.5.6"
 ethercat-sys = { path = "ethercat-sys", version = "0.1.3" }
+
+[badges]
+maintenance = { status = "actively-developed" }
