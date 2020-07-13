@@ -3,33 +3,15 @@
 
 use crate::ec;
 use derive_new::new;
-use std::{io, os::raw::c_ulong};
+use std::io;
+
+pub use ethercat_types::{
+    DomainIdx, Idx, Offset, PdoEntryIdx, PdoIdx, SdoIdx, SlavePos, SmIdx, SubIdx,
+};
 
 pub type Error = io::Error;
 pub type Result<T> = io::Result<T>;
-
 pub type MasterIndex = u32;
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct DomainIndex(pub(crate) usize);
-
-impl From<i32> for DomainIndex {
-    fn from(v: i32) -> Self {
-        Self(v as usize)
-    }
-}
-
-impl From<DomainIndex> for c_ulong {
-    fn from(idx: DomainIndex) -> Self {
-        idx.0 as c_ulong
-    }
-}
-
-impl From<DomainIndex> for u32 {
-    fn from(idx: DomainIndex) -> Self {
-        idx.0 as u32
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DomainDataPlacement {
@@ -38,7 +20,6 @@ pub(crate) struct DomainDataPlacement {
 }
 
 pub type SlaveConfigIndex = u32;
-pub type SlavePosition = u16;
 
 /// An EtherCAT slave identification, consisting of vendor ID and product code.
 #[derive(Debug, Clone, Copy, new)]
@@ -71,13 +52,6 @@ impl SlaveAddr {
     }
 }
 
-/// Offset of a PDO entry in the domain image.
-#[derive(Debug, Default, PartialEq, Eq, Hash, new)]
-pub struct Offset {
-    pub byte: usize,
-    pub bit: u32,
-}
-
 #[derive(Debug, Clone)]
 pub struct MasterInfo {
     pub slave_count: u32,
@@ -98,7 +72,7 @@ pub struct ConfigInfo {
     pub alias: u16,
     pub position: u16,
     pub id: SlaveId,
-    pub slave_position: Option<u32>,
+    pub slave_position: Option<SlavePos>,
     pub sdo_count: u32,
     pub idn_count: u32,
     // TODO: more attributes are returned:
@@ -171,31 +145,16 @@ pub enum WatchdogMode {
     Disable,
 }
 
-pub type SmIndex = u8;
-pub type PdoIndex = u16;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, new)]
-pub struct PdoEntryIndex {
-    pub index: u16,
-    pub subindex: u8,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, new)]
-pub struct SdoIndex {
-    pub index: u16,
-    pub subindex: u8,
-}
-
 #[derive(Debug, Copy, Clone)]
 pub struct SyncInfo<'a> {
-    pub index: SmIndex,
+    pub index: SmIdx,
     pub direction: SyncDirection,
     pub watchdog_mode: WatchdogMode,
     pub pdos: &'a [PdoInfo<'a>],
 }
 
 impl<'a> SyncInfo<'a> {
-    pub const fn input(index: SmIndex, pdos: &'a [PdoInfo<'a>]) -> Self {
+    pub const fn input(index: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
         SyncInfo {
             index,
             direction: SyncDirection::Input,
@@ -204,7 +163,7 @@ impl<'a> SyncInfo<'a> {
         }
     }
 
-    pub const fn output(index: SmIndex, pdos: &'a [PdoInfo<'a>]) -> Self {
+    pub const fn output(index: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
         SyncInfo {
             index,
             direction: SyncDirection::Output,
@@ -216,14 +175,14 @@ impl<'a> SyncInfo<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PdoInfo<'a> {
-    pub index: PdoIndex,
-    pub entries: &'a [PdoEntryInfo],
+    pub index: PdoIdx,
+    pub entries: &'a [PdoEntryInfo], // TODO: can we use a Vec?
 }
 
 const NO_ENTRIES: &[PdoEntryInfo] = &[];
 
 impl<'a> PdoInfo<'a> {
-    pub const fn default(index: PdoIndex) -> PdoInfo<'a> {
+    pub const fn default(index: PdoIdx) -> PdoInfo<'a> {
         PdoInfo {
             index,
             entries: NO_ENTRIES,
@@ -233,7 +192,7 @@ impl<'a> PdoInfo<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PdoEntryInfo {
-    pub index: PdoEntryIndex,
+    pub index: PdoEntryIdx,
     pub bit_length: u8,
 }
 

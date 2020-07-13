@@ -4,6 +4,7 @@
 use crate::{ec, types::*, Result};
 use std::{
     collections::HashMap,
+    convert::TryFrom,
     ffi::CStr,
     fs::{File, OpenOptions},
     io::{Error, ErrorKind},
@@ -22,12 +23,12 @@ macro_rules! ioctl {
 pub struct Master {
     file: File,
     map: Option<memmap::MmapMut>,
-    domains: HashMap<DomainIndex, DomainDataPlacement>,
+    domains: HashMap<DomainIdx, DomainDataPlacement>,
 }
 
 pub struct Domain<'m> {
     master: &'m Master,
-    index: DomainIndex,
+    index: DomainIdx,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,26 +76,34 @@ impl Master {
         Ok(())
     }
 
-    pub fn create_domain(&self) -> Result<DomainIndex> {
-        Ok(ioctl!(self, ec::ioctl::CREATE_DOMAIN)?.into())
+    pub fn create_domain(&self) -> Result<DomainIdx> {
+        Ok((ioctl!(self, ec::ioctl::CREATE_DOMAIN)? as usize).into())
     }
 
-    pub const fn domain(&self, index: DomainIndex) -> Domain {
-        index.domain(self)
+    pub const fn domain(&self, index: DomainIdx) -> Domain {
+        Domain::new(index, self)
     }
 
-    pub fn domain_data(&mut self, idx: DomainIndex) -> &mut [u8] {
+    pub fn domain_data(&mut self, idx: DomainIdx) -> &mut [u8] {
         let p = self
             .domain_data_placement(idx)
             .expect("Domain is not available");
         &mut self.map.as_mut().expect("Master is not activated")[p.offset..p.offset + p.size]
     }
 
-    fn domain_data_placement(&mut self, idx: DomainIndex) -> Result<DomainDataPlacement> {
+    fn domain_data_placement(&mut self, idx: DomainIdx) -> Result<DomainDataPlacement> {
         Ok(match self.domains.get(&idx) {
             None => {
-                let offset = ioctl!(self, ec::ioctl::DOMAIN_OFFSET, c_ulong::from(idx))? as usize;
-                let size = ioctl!(self, ec::ioctl::DOMAIN_SIZE, c_ulong::from(idx))? as usize;
+                let offset = ioctl!(
+                    self,
+                    ec::ioctl::DOMAIN_OFFSET,
+                    c_ulong::try_from(idx).map_err(|e| Error::new(ErrorKind::Other, e))?
+                )? as usize;
+                let size = ioctl!(
+                    self,
+                    ec::ioctl::DOMAIN_SIZE,
+                    c_ulong::try_from(idx).map_err(|e| Error::new(ErrorKind::Other, e))?
+                )? as usize;
                 let meta_data = DomainDataPlacement { offset, size };
                 self.domains.insert(idx, meta_data);
                 meta_data
@@ -189,9 +198,9 @@ impl Master {
         })
     }
 
-    pub fn get_slave_info(&self, position: SlavePosition) -> Result<SlaveInfo> {
+    pub fn get_slave_info(&self, position: SlavePos) -> Result<SlaveInfo> {
         let mut data = ec::ec_ioctl_slave_t::default();
-        data.position = position;
+        data.position = u16::from(position);
         ioctl!(self, ec::ioctl::SLAVE, &mut data)?;
         let mut ports = [SlavePortInfo::default(); ec::EC_MAX_PORTS as usize];
         for (i, port) in ports.iter_mut().enumerate().take(ec::EC_MAX_PORTS as usize) {
@@ -247,7 +256,7 @@ impl Master {
         let slave_position = if data.slave_position == -1 {
             None
         } else {
-            Some(data.slave_position as u32)
+            Some(SlavePos::from(data.slave_position as u16))
         };
         Ok(ConfigInfo {
             alias: data.alias,
@@ -273,19 +282,14 @@ impl Master {
         })
     }
 
-    pub fn sdo_download<T>(
-        &mut self,
-        position: SlavePosition,
-        sdo_index: SdoIndex,
-        data: &T,
-    ) -> Result<()>
+    pub fn sdo_download<T>(&mut self, position: SlavePos, sdo_index: SdoIdx, data: &T) -> Result<()>
     where
         T: SdoData + ?Sized,
     {
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
-            slave_position: position,
-            sdo_index: sdo_index.index,
-            sdo_entry_subindex: sdo_index.subindex,
+            slave_position: u16::from(position),
+            sdo_index: u16::from(sdo_index.idx),
+            sdo_entry_subindex: u8::from(sdo_index.sub_idx),
             complete_access: 0,
             data_size: data.data_size() as u64,
             data: data.data_ptr(),
@@ -296,14 +300,14 @@ impl Master {
 
     pub fn sdo_download_complete(
         &mut self,
-        position: SlavePosition,
-        sdo_index: SdoIndex,
+        position: SlavePos,
+        sdo_index: SdoIdx,
         data: &[u8],
     ) -> Result<()> {
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
-            slave_position: position,
-            sdo_index: sdo_index.index,
-            sdo_entry_subindex: sdo_index.subindex,
+            slave_position: u16::from(position),
+            sdo_index: u16::from(sdo_index.idx),
+            sdo_entry_subindex: u8::from(sdo_index.sub_idx),
             complete_access: 1,
             data_size: data.len() as u64,
             data: data.as_ptr(),
@@ -314,14 +318,14 @@ impl Master {
 
     pub fn sdo_upload<'t>(
         &self,
-        position: SlavePosition,
-        sdo_index: SdoIndex,
+        position: SlavePos,
+        sdo_index: SdoIdx,
         target: &'t mut [u8],
     ) -> Result<&'t mut [u8]> {
         let mut data = ec::ec_ioctl_slave_sdo_upload_t {
-            slave_position: position,
-            sdo_index: sdo_index.index,
-            sdo_entry_subindex: sdo_index.subindex,
+            slave_position: u16::from(position),
+            sdo_index: u16::from(sdo_index.idx),
+            sdo_entry_subindex: u8::from(sdo_index.sub_idx),
             target_size: target.len() as u64,
             target: target.as_mut_ptr(),
             data_size: 0,
@@ -395,61 +399,57 @@ impl<'m> SlaveConfig<'m> {
     }
 
     pub fn config_sync_manager(&mut self, info: &SyncInfo) -> Result<()> {
-        if info.index >= ec::EC_MAX_SYNC_MANAGERS as u8 {
+        if u8::from(info.index) >= ec::EC_MAX_SYNC_MANAGERS as u8 {
             return Err(Error::new(ErrorKind::Other, "sync manager index too large"));
         }
         let mut data = ec::ec_ioctl_config_t::default();
         data.config_index = self.index;
-        let ix = info.index as usize;
+        let ix = u8::from(info.index) as usize;
         data.syncs[ix].dir = info.direction as u32;
         data.syncs[ix].watchdog_mode = info.watchdog_mode as u32;
         data.syncs[ix].config_this = 1;
         ioctl!(self.master, ec::ioctl::SC_SYNC, &data).map(|_| ())
     }
 
-    pub fn clear_pdo_assignments(&mut self, sync_index: SmIndex) -> Result<()> {
+    pub fn clear_pdo_assignments(&mut self, sync_index: SmIdx) -> Result<()> {
         let mut data = ec::ec_ioctl_config_pdo_t::default();
         data.config_index = self.index;
-        data.sync_index = sync_index;
+        data.sync_index = u8::from(sync_index);
         ioctl!(self.master, ec::ioctl::SC_CLEAR_PDOS, &data).map(|_| ())
     }
 
-    pub fn add_pdo_assignment(&mut self, sync_index: SmIndex, pdo: &PdoInfo) -> Result<()> {
+    pub fn add_pdo_assignment(&mut self, sync_index: SmIdx, pdo: &PdoInfo) -> Result<()> {
         let mut data = ec::ec_ioctl_config_pdo_t::default();
         data.config_index = self.index;
-        data.sync_index = sync_index;
-        data.index = pdo.index;
+        data.sync_index = u8::from(sync_index);
+        data.index = u16::from(pdo.index);
         ioctl!(self.master, ec::ioctl::SC_ADD_PDO, &data).map(|_| ())
     }
 
-    pub fn clear_pdo_mapping(&mut self, pdo_index: PdoIndex) -> Result<()> {
+    pub fn clear_pdo_mapping(&mut self, pdo_index: PdoIdx) -> Result<()> {
         let mut data = ec::ec_ioctl_config_pdo_t::default();
         data.config_index = self.index;
-        data.index = pdo_index;
+        data.index = u16::from(pdo_index);
         ioctl!(self.master, ec::ioctl::SC_CLEAR_ENTRIES, &data).map(|_| ())
     }
 
-    pub fn add_pdo_mapping(&mut self, pdo_index: PdoIndex, entry: PdoEntryInfo) -> Result<()> {
+    pub fn add_pdo_mapping(&mut self, pdo_index: PdoIdx, entry: PdoEntryInfo) -> Result<()> {
         let data = ec::ec_ioctl_add_pdo_entry_t {
             config_index: self.index,
-            pdo_index,
-            entry_index: entry.index.index,
-            entry_subindex: entry.index.subindex,
+            pdo_index: u16::from(pdo_index),
+            entry_index: u16::from(entry.index.idx),
+            entry_subindex: u8::from(entry.index.sub_idx),
             entry_bit_length: entry.bit_length,
         };
         ioctl!(self.master, ec::ioctl::SC_ADD_ENTRY, &data).map(|_| ())
     }
 
-    pub fn register_pdo_entry(
-        &mut self,
-        index: PdoEntryIndex,
-        domain: DomainIndex,
-    ) -> Result<Offset> {
+    pub fn register_pdo_entry(&mut self, index: PdoEntryIdx, domain: DomainIdx) -> Result<Offset> {
         let mut data = ec::ec_ioctl_reg_pdo_entry_t {
             config_index: self.index,
-            entry_index: index.index,
-            entry_subindex: index.subindex,
-            domain_index: domain.into(),
+            entry_index: u16::from(index.idx),
+            entry_subindex: u8::from(index.sub_idx),
+            domain_index: u32::try_from(domain).map_err(|e| Error::new(ErrorKind::Other, e))?,
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_ENTRY, &mut data)?;
@@ -461,17 +461,17 @@ impl<'m> SlaveConfig<'m> {
 
     pub fn register_pdo_entry_by_position(
         &mut self,
-        sync_index: SmIndex,
+        sync_index: SmIdx,
         pdo_pos: u32,
         entry_pos: u32,
-        domain: DomainIndex,
+        domain: DomainIdx,
     ) -> Result<Offset> {
         let mut data = ec::ec_ioctl_reg_pdo_pos_t {
             config_index: self.index,
-            sync_index: sync_index as u32,
+            sync_index: u8::from(sync_index) as u32,
             pdo_pos,
             entry_pos,
-            domain_index: domain.into(),
+            domain_index: u32::try_from(domain).map_err(|e| Error::new(ErrorKind::Other, e))?,
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_POS, &mut data)?;
@@ -499,14 +499,14 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_DC, &data).map(|_| ())
     }
 
-    pub fn add_sdo<T>(&mut self, index: SdoIndex, data: &T) -> Result<()>
+    pub fn add_sdo<T>(&mut self, index: SdoIdx, data: &T) -> Result<()>
     where
         T: SdoData + ?Sized,
     {
         let data = ec::ec_ioctl_sc_sdo_t {
             config_index: self.index,
-            index: index.index,
-            subindex: index.subindex,
+            index: u16::from(index.idx),
+            subindex: u8::from(index.sub_idx),
             data: data.data_ptr(),
             size: data.data_size() as u64,
             complete_access: 0,
@@ -514,11 +514,11 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_SDO, &data).map(|_| ())
     }
 
-    pub fn add_complete_sdo(&mut self, index: SdoIndex, data: &[u8]) -> Result<()> {
+    pub fn add_complete_sdo(&mut self, index: SdoIdx, data: &[u8]) -> Result<()> {
         let data = ec::ec_ioctl_sc_sdo_t {
             config_index: self.index,
-            index: index.index,
-            subindex: index.subindex,
+            index: u16::from(index.idx),
+            subindex: u8::from(index.sub_idx),
             data: data.as_ptr(),
             size: data.len() as u64,
             complete_access: 1,
@@ -574,21 +574,16 @@ impl<'m> SlaveConfig<'m> {
     // XXX missing: create_sdo_request, create_reg_request, create_voe_handler
 }
 
-impl DomainIndex {
-    pub const fn domain<'m>(&self, master: &'m Master) -> Domain<'m> {
-        Domain {
-            index: *self,
-            master,
-        }
-    }
-}
-
 impl<'m> Domain<'m> {
+    pub const fn new(index: DomainIdx, master: &'m Master) -> Self {
+        Self { index, master }
+    }
+
     pub fn size(&self) -> Result<usize> {
         ioctl!(
             self.master,
             ec::ioctl::DOMAIN_SIZE,
-            c_ulong::from(self.index)
+            c_ulong::try_from(self.index).map_err(|e| Error::new(ErrorKind::Other, e))?
         )
         .map(|v| v as usize)
     }
@@ -596,7 +591,7 @@ impl<'m> Domain<'m> {
     pub fn state(&self) -> Result<DomainState> {
         let mut state = ec::ec_domain_state_t::default();
         let mut data = ec::ec_ioctl_domain_state_t {
-            domain_index: u32::from(self.index),
+            domain_index: u32::try_from(self.index).map_err(|e| Error::new(ErrorKind::Other, e))?,
             state: &mut state,
         };
         ioctl!(self.master, ec::ioctl::DOMAIN_STATE, &mut data)?;
@@ -611,7 +606,7 @@ impl<'m> Domain<'m> {
         ioctl!(
             self.master,
             ec::ioctl::DOMAIN_PROCESS,
-            c_ulong::from(self.index)
+            c_ulong::from(usize::from(self.index) as u64)
         )
         .map(|_| ())
     }
@@ -620,7 +615,7 @@ impl<'m> Domain<'m> {
         ioctl!(
             self.master,
             ec::ioctl::DOMAIN_QUEUE,
-            c_ulong::from(self.index)
+            c_ulong::try_from(self.index).map_err(|e| Error::new(ErrorKind::Other, e))?
         )
         .map(|_| ())
     }
