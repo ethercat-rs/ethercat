@@ -11,7 +11,7 @@ pub use ethercat_types::{
 
 pub type Error = io::Error;
 pub type Result<T> = io::Result<T>;
-pub type MasterIndex = u32;
+pub type MasterIdx = u32;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DomainDataPlacement {
@@ -19,7 +19,7 @@ pub(crate) struct DomainDataPlacement {
     pub size: usize,
 }
 
-pub type SlaveConfigIndex = u32;
+pub type SlaveConfigIdx = u32;
 
 /// An EtherCAT slave identification, consisting of vendor ID and product code.
 #[derive(Debug, Clone, Copy, new)]
@@ -147,25 +147,25 @@ pub enum WatchdogMode {
 
 #[derive(Debug, Copy, Clone)]
 pub struct SyncInfo<'a> {
-    pub index: SmIdx,
+    pub idx: SmIdx,
     pub direction: SyncDirection,
     pub watchdog_mode: WatchdogMode,
     pub pdos: &'a [PdoInfo<'a>],
 }
 
 impl<'a> SyncInfo<'a> {
-    pub const fn input(index: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
+    pub const fn input(idx: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
         SyncInfo {
-            index,
+            idx,
             direction: SyncDirection::Input,
             watchdog_mode: WatchdogMode::Default,
             pdos,
         }
     }
 
-    pub const fn output(index: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
+    pub const fn output(idx: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
         SyncInfo {
-            index,
+            idx,
             direction: SyncDirection::Output,
             watchdog_mode: WatchdogMode::Default,
             pdos,
@@ -175,16 +175,16 @@ impl<'a> SyncInfo<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PdoInfo<'a> {
-    pub index: PdoIdx,
+    pub idx: PdoIdx,
     pub entries: &'a [PdoEntryInfo], // TODO: can we use a Vec?
 }
 
 const NO_ENTRIES: &[PdoEntryInfo] = &[];
 
 impl<'a> PdoInfo<'a> {
-    pub const fn default(index: PdoIdx) -> PdoInfo<'a> {
+    pub const fn default(idx: PdoIdx) -> PdoInfo<'a> {
         PdoInfo {
-            index,
+            idx,
             entries: NO_ENTRIES,
         }
     }
@@ -192,7 +192,7 @@ impl<'a> PdoInfo<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PdoEntryInfo {
-    pub index: PdoEntryIdx,
+    pub idx: PdoEntryIdx,
     pub bit_length: u8,
 }
 
