@@ -380,7 +380,51 @@ impl Master {
         Ok(&mut target[..data.data_size as usize])
     }
 
-    // XXX missing: get_sync_manager, get_pdo, get_pdo_entry, write_idn, read_idn,
+    pub fn get_pdo(
+        &mut self,
+        slave_pos: SlavePos,
+        sync_index: SmIdx,
+        pdo_position: PdoPos,
+    ) -> Result<PdoInfo> {
+        let mut pdo = ec::ec_ioctl_slave_sync_pdo_t::default();
+        pdo.slave_position = u16::from(slave_pos);
+        pdo.sync_index = u8::from(sync_index) as u32;
+        pdo.pdo_pos = u8::from(pdo_position) as u32;
+        ioctl!(self, ec::ioctl::SLAVE_SYNC_PDO, &mut pdo)?;
+        Ok(PdoInfo {
+            sm: SmIdx::from(pdo.sync_index as u8),
+            pos: PdoPos::from(pdo.pdo_pos as u8),
+            idx: Idx::from(pdo.index),
+            entry_count: pdo.entry_count,
+            name: c_array_to_string(pdo.name.as_ptr()),
+        })
+    }
+
+    pub fn get_pdo_entry(
+        &mut self,
+        slave_pos: SlavePos,
+        sync_index: SmIdx,
+        pdo_pos: PdoPos,
+        entry_pos: PdoEntryPos,
+    ) -> Result<PdoEntryInfo> {
+        let mut entry = ec::ec_ioctl_slave_sync_pdo_entry_t::default();
+        entry.slave_position = u16::from(slave_pos);
+        entry.sync_index = u8::from(sync_index) as u32;
+        entry.pdo_pos = u8::from(pdo_pos) as u32;
+        entry.entry_pos = u8::from(entry_pos) as u32;
+        ioctl!(self, ec::ioctl::SLAVE_SYNC_PDO_ENTRY, &mut entry)?;
+        Ok(PdoEntryInfo {
+            pos: PdoEntryPos::from(entry.pdo_pos as u8),
+            entry_idx: PdoEntryIdx {
+                idx: Idx::from(entry.index),
+                sub_idx: SubIdx::from(entry.subindex),
+            },
+            bit_len: entry.bit_length,
+            name: c_array_to_string(entry.name.as_ptr()),
+        })
+    }
+
+    // XXX missing: get_sync_manager, write_idn, read_idn,
     // application_time, sync_reference_clock, sync_slave_clocks,
     // reference_clock_time, sync_monitor_queue, sync_monitor_process
 }
