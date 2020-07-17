@@ -2,6 +2,7 @@
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
 use crate::{ec, types::*, Result};
+use num_traits::cast::FromPrimitive;
 use std::{
     collections::HashMap,
     convert::TryFrom,
@@ -282,6 +283,50 @@ impl Master {
         })
     }
 
+    pub fn get_sdo(&mut self, slave_pos: SlavePos, sdo_pos: SdoPos) -> Result<SdoInfo> {
+        let mut sdo = ec::ec_ioctl_slave_sdo_t::default();
+        sdo.slave_position = u16::from(slave_pos);
+        sdo.sdo_position = u16::from(sdo_pos);
+        ioctl!(self, ec::ioctl::SLAVE_SDO, &mut sdo)?;
+        Ok(SdoInfo {
+            pos: SdoPos::from(sdo.sdo_position),
+            idx: Idx::from(sdo.sdo_index),
+            max_sub_idx: SubIdx::from(sdo.max_subindex),
+            object_code: sdo.object_code,
+            name: c_array_to_string(sdo.name.as_ptr()),
+        })
+    }
+
+    pub fn get_sdo_entry(
+        &mut self,
+        slave_pos: SlavePos,
+        addr: SdoEntryAddr,
+    ) -> Result<SdoEntryInfo> {
+        let mut entry = ec::ec_ioctl_slave_sdo_entry_t::default();
+        entry.slave_position = u16::from(slave_pos);
+        let (spec, sub) = match addr {
+            SdoEntryAddr::ByPos(pos, sub) => ((u16::from(pos) as i32) * -1, sub),
+            SdoEntryAddr::ByIdx(idx) => (u16::from(idx.idx) as i32, idx.sub_idx),
+        };
+        entry.sdo_spec = spec;
+        entry.sdo_entry_subindex = u8::from(sub);
+        ioctl!(self, ec::ioctl::SLAVE_SDO_ENTRY, &mut entry)?;
+        Ok(SdoEntryInfo {
+            data_type: DataType::from_u16(entry.data_type).unwrap_or_else(|| {
+                let fallback = DataType::Raw;
+                log::error!(
+                    "Unknown data type (type value: {:X}): use '{:?}' as fallback",
+                    entry.data_type,
+                    fallback
+                );
+                fallback
+            }),
+            bit_len: entry.bit_length,
+            access: get_sdo_entry_access(entry.read_access, entry.write_access),
+            description: c_array_to_string(entry.description.as_ptr()),
+        })
+    }
+
     pub fn sdo_download<T>(&mut self, position: SlavePos, sdo_idx: SdoIdx, data: &T) -> Result<()>
     where
         T: SdoData + ?Sized,
@@ -338,6 +383,25 @@ impl Master {
     // XXX missing: get_sync_manager, get_pdo, get_pdo_entry, write_idn, read_idn,
     // application_time, sync_reference_clock, sync_slave_clocks,
     // reference_clock_time, sync_monitor_queue, sync_monitor_process
+}
+
+fn c_array_to_string(data: *const i8) -> String {
+    unsafe { CStr::from_ptr(data).to_string_lossy().into_owned() }
+}
+
+#[test]
+fn test_c_array_to_string() {
+    let arr: [i8; 64] = [0_i8; 64];
+    assert_eq!(c_array_to_string(arr.as_ptr()), "");
+
+    let mut arr: [i8; 64] = [0_i8; 64];
+    [80_i8, 114, 111, 100, 117, 99, 116, 32, 99, 111, 100, 101]
+        .iter()
+        .enumerate()
+        .for_each(|(idx, v)| {
+            arr[idx] = *v;
+        });
+    assert_eq!(c_array_to_string(arr.as_ptr()), "Product code");
 }
 
 pub struct SlaveConfig<'m> {

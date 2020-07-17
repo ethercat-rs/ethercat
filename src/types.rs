@@ -252,6 +252,23 @@ pub enum WcState {
     Complete,
 }
 
+pub(crate) fn get_sdo_entry_access(read: [u8; 3], write: [u8; 3]) -> SdoEntryAccess {
+    SdoEntryAccess {
+        pre_op: access(read[0], write[0]),
+        safe_op: access(read[1], write[1]),
+        op: access(read[2], write[2]),
+    }
+}
+
+fn access(read: u8, write: u8) -> Access {
+    match (read, write) {
+        (0, 1) => Access::ReadOnly,
+        (1, 0) => Access::WriteOnly,
+        (1, 1) => Access::ReadWrite,
+        _ => Access::Unknown,
+    }
+}
+
 impl From<u32> for WcState {
     fn from(st: u32) -> Self {
         match st {
