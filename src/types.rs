@@ -5,9 +5,7 @@ use crate::ec;
 use derive_new::new;
 use std::io;
 
-pub use ethercat_types::{
-    DomainIdx, Idx, Offset, PdoEntryIdx, PdoIdx, SdoIdx, SlavePos, SmIdx, SubIdx,
-};
+pub use ethercat_types::*;
 
 pub type Error = io::Error;
 pub type Result<T> = io::Result<T>;
@@ -145,55 +143,52 @@ pub enum WatchdogMode {
     Disable,
 }
 
+/// Sync Master Info
 #[derive(Debug, Copy, Clone)]
-pub struct SyncInfo<'a> {
+pub struct SyncInfo {
     pub idx: SmIdx,
     pub direction: SyncDirection,
     pub watchdog_mode: WatchdogMode,
-    pub pdos: &'a [PdoInfo<'a>],
 }
 
-impl<'a> SyncInfo<'a> {
-    pub const fn input(idx: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
-        SyncInfo {
+impl SyncInfo {
+    pub const fn input(idx: SmIdx) -> Self {
+        Self {
             idx,
             direction: SyncDirection::Input,
             watchdog_mode: WatchdogMode::Default,
-            pdos,
         }
     }
-
-    pub const fn output(idx: SmIdx, pdos: &'a [PdoInfo<'a>]) -> Self {
-        SyncInfo {
+    pub const fn output(idx: SmIdx) -> Self {
+        Self {
             idx,
             direction: SyncDirection::Output,
             watchdog_mode: WatchdogMode::Default,
-            pdos,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct PdoInfo<'a> {
+/// Sync Master Config
+#[derive(Debug, Clone)]
+pub struct SyncCfg {
+    pub sm: SyncInfo,
+    pub pdos: Vec<PdoCfg>,
+}
+
+/// PDO Config
+#[derive(Debug, Clone)]
+pub struct PdoCfg {
     pub idx: PdoIdx,
-    pub entries: &'a [PdoEntryInfo], // TODO: can we use a Vec?
+    pub entries: Vec<PdoEntryInfo>,
 }
 
-const NO_ENTRIES: &[PdoEntryInfo] = &[];
-
-impl<'a> PdoInfo<'a> {
-    pub const fn default(idx: PdoIdx) -> PdoInfo<'a> {
-        PdoInfo {
+impl PdoCfg {
+    pub const fn new(idx: PdoIdx) -> PdoCfg {
+        Self {
             idx,
-            entries: NO_ENTRIES,
+            entries: vec![],
         }
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PdoEntryInfo {
-    pub idx: PdoEntryIdx,
-    pub bit_length: u8,
 }
 
 #[derive(Debug, Clone, Copy)]

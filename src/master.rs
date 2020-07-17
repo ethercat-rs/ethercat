@@ -364,18 +364,18 @@ impl<'m> SlaveConfig<'m> {
         })
     }
 
-    pub fn config_pdos(&mut self, info: &[SyncInfo]) -> Result<()> {
+    pub fn config_pdos(&mut self, info: &[SyncCfg]) -> Result<()> {
         for sm_info in info {
-            self.config_sync_manager(sm_info)?;
+            self.config_sync_manager(&sm_info.sm)?;
 
-            self.clear_pdo_assignments(sm_info.idx)?;
-            for pdo_info in sm_info.pdos {
-                self.add_pdo_assignment(sm_info.idx, pdo_info)?;
+            self.clear_pdo_assignments(sm_info.sm.idx)?;
+            for pdo_info in &sm_info.pdos {
+                self.add_pdo_assignment(sm_info.sm.idx, pdo_info.idx)?;
 
                 if !pdo_info.entries.is_empty() {
                     self.clear_pdo_mapping(pdo_info.idx)?;
-                    for entry in pdo_info.entries {
-                        self.add_pdo_mapping(pdo_info.idx, *entry)?;
+                    for entry in &pdo_info.entries {
+                        self.add_pdo_mapping(pdo_info.idx, entry)?;
                     }
                 }
             }
@@ -418,11 +418,11 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_CLEAR_PDOS, &data).map(|_| ())
     }
 
-    pub fn add_pdo_assignment(&mut self, sync_idx: SmIdx, pdo: &PdoInfo) -> Result<()> {
+    pub fn add_pdo_assignment(&mut self, sync_idx: SmIdx, pdo_idx: PdoIdx) -> Result<()> {
         let mut data = ec::ec_ioctl_config_pdo_t::default();
         data.config_index = self.idx;
         data.sync_index = u8::from(sync_idx);
-        data.index = u16::from(pdo.idx);
+        data.index = u16::from(pdo_idx);
         ioctl!(self.master, ec::ioctl::SC_ADD_PDO, &data).map(|_| ())
     }
 
@@ -433,13 +433,13 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_CLEAR_ENTRIES, &data).map(|_| ())
     }
 
-    pub fn add_pdo_mapping(&mut self, pdo_index: PdoIdx, entry: PdoEntryInfo) -> Result<()> {
+    pub fn add_pdo_mapping(&mut self, pdo_index: PdoIdx, entry: &PdoEntryInfo) -> Result<()> {
         let data = ec::ec_ioctl_add_pdo_entry_t {
             config_index: self.idx,
             pdo_index: u16::from(pdo_index),
-            entry_index: u16::from(entry.idx.idx),
-            entry_subindex: u8::from(entry.idx.sub_idx),
-            entry_bit_length: entry.bit_length,
+            entry_index: u16::from(entry.entry_idx.idx),
+            entry_subindex: u8::from(entry.entry_idx.sub_idx),
+            entry_bit_length: entry.bit_len,
         };
         ioctl!(self.master, ec::ioctl::SC_ADD_ENTRY, &data).map(|_| ())
     }
