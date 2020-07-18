@@ -262,8 +262,8 @@ pub(crate) fn get_sdo_entry_access(read: [u8; 3], write: [u8; 3]) -> SdoEntryAcc
 
 fn access(read: u8, write: u8) -> Access {
     match (read, write) {
-        (0, 1) => Access::ReadOnly,
-        (1, 0) => Access::WriteOnly,
+        (1, 0) => Access::ReadOnly,
+        (0, 1) => Access::WriteOnly,
         (1, 1) => Access::ReadWrite,
         _ => Access::Unknown,
     }
