@@ -424,7 +424,22 @@ impl Master {
         })
     }
 
-    // XXX missing: get_sync_manager, write_idn, read_idn,
+    pub fn get_sync(&mut self, slave_pos: SlavePos, sm: SmIdx) -> Result<SmInfo> {
+        let mut sync = ec::ec_ioctl_slave_sync_t::default();
+        sync.slave_position = u16::from(slave_pos);
+        sync.sync_index = u8::from(sm) as u32;
+        ioctl!(self, ec::ioctl::SLAVE_SYNC, &mut sync)?;
+        Ok(SmInfo {
+            idx: SmIdx::from(sync.sync_index as u8),
+            start_addr: sync.physical_start_address,
+            default_size: sync.default_size,
+            control_register: sync.control_register,
+            enable: sync.enable == 1,
+            pdo_count: sync.pdo_count,
+        })
+    }
+
+    // XXX missing: write_idn, read_idn,
     // application_time, sync_reference_clock, sync_slave_clocks,
     // reference_clock_time, sync_monitor_queue, sync_monitor_process
 }
@@ -472,19 +487,16 @@ impl<'m> SlaveConfig<'m> {
         })
     }
 
-    pub fn config_pdos(&mut self, info: &[SyncCfg]) -> Result<()> {
-        for sm_info in info {
-            self.config_sync_manager(&sm_info.sm)?;
-
-            self.clear_pdo_assignments(sm_info.sm.idx)?;
-            for pdo_info in &sm_info.pdos {
-                self.add_pdo_assignment(sm_info.sm.idx, pdo_info.idx)?;
-
-                if !pdo_info.entries.is_empty() {
-                    self.clear_pdo_mapping(pdo_info.idx)?;
-                    for entry in &pdo_info.entries {
-                        self.add_pdo_mapping(pdo_info.idx, entry)?;
-                    }
+    /// Configure PDOs of a specifc Sync Manager
+    pub fn config_sm_pdos(&mut self, sm_cfg: SmCfg, pdo_cfgs: &[PdoCfg]) -> Result<()> {
+        self.config_sync_manager(&sm_cfg)?;
+        self.clear_pdo_assignments(sm_cfg.idx)?;
+        for pdo_cfg in &*pdo_cfgs {
+            self.add_pdo_assignment(sm_cfg.idx, pdo_cfg.idx)?;
+            if !pdo_cfg.entries.is_empty() {
+                self.clear_pdo_mapping(pdo_cfg.idx)?;
+                for entry in &pdo_cfg.entries {
+                    self.add_pdo_mapping(pdo_cfg.idx, entry)?;
                 }
             }
         }
@@ -506,7 +518,7 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_OVERLAPPING_IO, &data).map(|_| ())
     }
 
-    pub fn config_sync_manager(&mut self, info: &SyncInfo) -> Result<()> {
+    pub fn config_sync_manager(&mut self, info: &SmCfg) -> Result<()> {
         if u8::from(info.idx) >= ec::EC_MAX_SYNC_MANAGERS as u8 {
             return Err(Error::new(ErrorKind::Other, "sync manager index too large"));
         }

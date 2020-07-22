@@ -143,15 +143,26 @@ pub enum WatchdogMode {
     Disable,
 }
 
-/// Sync Master Info
+/// Sync Manager Info
 #[derive(Debug, Copy, Clone)]
-pub struct SyncInfo {
+pub struct SmInfo {
     pub idx: SmIdx,
-    pub direction: SyncDirection,
-    pub watchdog_mode: WatchdogMode,
+    pub start_addr: u16,
+    pub default_size: u16,
+    pub control_register: u8,
+    pub enable: bool,
+    pub pdo_count: u8,
 }
 
-impl SyncInfo {
+/// Sync Manager Config
+#[derive(Debug, Clone, Copy)]
+pub struct SmCfg {
+    pub idx: SmIdx,
+    pub watchdog_mode: WatchdogMode,
+    pub direction: SyncDirection,
+}
+
+impl SmCfg {
     pub const fn input(idx: SmIdx) -> Self {
         Self {
             idx,
@@ -166,13 +177,6 @@ impl SyncInfo {
             watchdog_mode: WatchdogMode::Default,
         }
     }
-}
-
-/// Sync Master Config
-#[derive(Debug, Clone)]
-pub struct SyncCfg {
-    pub sm: SyncInfo,
-    pub pdos: Vec<PdoCfg>,
 }
 
 /// PDO Config
