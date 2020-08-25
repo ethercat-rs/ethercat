@@ -314,8 +314,10 @@ impl Master {
         Ok(SdoEntryInfo {
             data_type: DataType::from_u16(entry.data_type).unwrap_or_else(|| {
                 let fallback = DataType::Raw;
-                log::error!(
-                    "Unknown data type (type value: {:X}): use '{:?}' as fallback",
+                log::warn!(
+                    "{:?}/{:?}: Unknown data type (type value: {:X}): use '{:?}' as fallback",
+                    slave_pos,
+                    addr,
                     entry.data_type,
                     fallback
                 );
