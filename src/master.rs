@@ -315,9 +315,13 @@ impl Master {
             data_type: DataType::from_u16(entry.data_type).unwrap_or_else(|| {
                 let fallback = DataType::Raw;
                 log::warn!(
-                    "{:?}/{:?}: Unknown data type (type value: {:X}): use '{:?}' as fallback",
-                    slave_pos,
-                    addr,
+                    "Slave {} / SDO {}: Unknown data type (type value: {:X}): use '{:?}' as fallback",
+                    u16::from(slave_pos),
+                    match addr {
+                        SdoEntryAddr::ByPos(pos, sub) => format!("{:?} {:?} ", pos, sub),
+                        SdoEntryAddr::ByIdx(idx) =>
+                            format!("{:X}:{}", u16::from(idx.idx), u8::from(idx.sub_idx)),
+                    },
                     entry.data_type,
                     fallback
                 );
