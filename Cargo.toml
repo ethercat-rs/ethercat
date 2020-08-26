@@ -19,6 +19,7 @@ libc = "0.2.49"
 log = "0.4"
 memmap = "0.7.0"
 num-traits = "0.2"
+thiserror = "1.0"
 
 [badges]
 maintenance = { status = "actively-developed" }

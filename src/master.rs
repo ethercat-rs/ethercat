@@ -1,14 +1,14 @@
 // Part of ethercat-rs. Copyright 2018-2020 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-use crate::{ec, types::*, Result};
+use crate::{ec, types::*};
 use num_traits::cast::FromPrimitive;
 use std::{
     collections::HashMap,
     convert::TryFrom,
     ffi::CStr,
     fs::{File, OpenOptions},
-    io::{Error, ErrorKind},
+    io,
     os::{raw::c_ulong, unix::io::AsRawFd},
 };
 
@@ -16,7 +16,7 @@ macro_rules! ioctl {
     ($m:expr, $f:expr) => { ioctl!($m, $f,) };
     ($m:expr, $f:expr, $($arg:tt)*) => {{
         let res = unsafe { $f($m.file.as_raw_fd(), $($arg)*) };
-        if res < 0 { Err(Error::last_os_error()) } else { Ok(res) }
+        if res < 0 { Err(Error::Io(io::Error::last_os_error())) } else { Ok(res) }
     }}
 }
 
@@ -54,13 +54,9 @@ impl Master {
         };
         ioctl!(master, ec::ioctl::MODULE, &mut module_info)?;
         if module_info.ioctl_version_magic != ec::EC_IOCTL_VERSION_MAGIC {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!(
-                    "module version mismatch: expected {}, found {}",
-                    ec::EC_IOCTL_VERSION_MAGIC,
-                    module_info.ioctl_version_magic
-                ),
+            return Err(Error::KernelModule(
+                ec::EC_IOCTL_VERSION_MAGIC,
+                module_info.ioctl_version_magic,
             ));
         }
         Ok(master)
@@ -87,26 +83,21 @@ impl Master {
         Domain::new(idx, self)
     }
 
-    pub fn domain_data(&mut self, idx: DomainIdx) -> &mut [u8] {
+    pub fn domain_data(&mut self, idx: DomainIdx) -> Result<&mut [u8]> {
         let p = self
             .domain_data_placement(idx)
-            .expect("Domain is not available");
-        &mut self.map.as_mut().expect("Master is not activated")[p.offset..p.offset + p.size]
+            .map_err(|_| Error::NoDomain)?;
+        let data = self.map.as_mut().ok_or_else(|| Error::NotActivated)?;
+        Ok(&mut data[p.offset..p.offset + p.size])
     }
 
     fn domain_data_placement(&mut self, idx: DomainIdx) -> Result<DomainDataPlacement> {
         Ok(match self.domains.get(&idx) {
             None => {
-                let offset = ioctl!(
-                    self,
-                    ec::ioctl::DOMAIN_OFFSET,
-                    c_ulong::try_from(idx).map_err(|e| Error::new(ErrorKind::Other, e))?
-                )? as usize;
-                let size = ioctl!(
-                    self,
-                    ec::ioctl::DOMAIN_SIZE,
-                    c_ulong::try_from(idx).map_err(|e| Error::new(ErrorKind::Other, e))?
-                )? as usize;
+                let d_idx =
+                    c_ulong::try_from(idx).map_err(|_| Error::DomainIdx(usize::from(idx)))?;
+                let offset = ioctl!(self, ec::ioctl::DOMAIN_OFFSET, d_idx)? as usize;
+                let size = ioctl!(self, ec::ioctl::DOMAIN_SIZE, d_idx)? as usize;
                 let meta_data = DomainDataPlacement { offset, size };
                 self.domains.insert(idx, meta_data);
                 meta_data
@@ -126,7 +117,7 @@ impl Master {
                 .map_mut(&self.file)
                 .map(Some)?
         };
-        self.map.as_mut().unwrap()[0] = 0;
+        self.map.as_mut().ok_or_else(|| Error::NotActivated)?[0] = 0;
         Ok(())
     }
 
@@ -190,9 +181,7 @@ impl Master {
             app_time,
             ..
         } = data;
-        let first_device = devices
-            .get(0)
-            .ok_or_else(|| Error::new(ErrorKind::InvalidData, "No devices available"))?;
+        let first_device = devices.get(0).ok_or_else(|| Error::NoDevices)?;
         let link_up = first_device.link_state != 0;
         let scan_busy = scan_busy != 0;
         Ok(MasterInfo {
@@ -532,7 +521,7 @@ impl<'m> SlaveConfig<'m> {
     pub fn config_sync_manager(&mut self, cfg: &SmCfg) -> Result<()> {
         log::debug!("Configure Sync Manager: {:?}", cfg);
         if u8::from(cfg.idx) >= ec::EC_MAX_SYNC_MANAGERS as u8 {
-            return Err(Error::new(ErrorKind::Other, "sync manager index too large"));
+            return Err(Error::SmIdxTooLarge);
         }
         let mut data = ec::ec_ioctl_config_t::default();
         data.config_index = self.idx;
@@ -581,7 +570,8 @@ impl<'m> SlaveConfig<'m> {
             config_index: self.idx,
             entry_index: u16::from(index.idx),
             entry_subindex: u8::from(index.sub_idx),
-            domain_index: u32::try_from(domain).map_err(|e| Error::new(ErrorKind::Other, e))?,
+            domain_index: u32::try_from(domain)
+                .map_err(|_| Error::DomainIdx(usize::from(domain)))?,
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_ENTRY, &mut data)?;
@@ -603,7 +593,8 @@ impl<'m> SlaveConfig<'m> {
             sync_index: u8::from(sync_index) as u32,
             pdo_pos,
             entry_pos,
-            domain_index: u32::try_from(domain).map_err(|e| Error::new(ErrorKind::Other, e))?,
+            domain_index: u32::try_from(domain)
+                .map_err(|_| Error::DomainIdx(usize::from(domain)))?,
             bit_position: 0,
         };
         let byte = ioctl!(self.master, ec::ioctl::SC_REG_PDO_POS, &mut data)?;
@@ -715,7 +706,7 @@ impl<'m> Domain<'m> {
         ioctl!(
             self.master,
             ec::ioctl::DOMAIN_SIZE,
-            c_ulong::try_from(self.idx).map_err(|e| Error::new(ErrorKind::Other, e))?
+            c_ulong::try_from(self.idx).map_err(|_| Error::DomainIdx(usize::from(self.idx)))?
         )
         .map(|v| v as usize)
     }
@@ -723,7 +714,8 @@ impl<'m> Domain<'m> {
     pub fn state(&self) -> Result<DomainState> {
         let mut state = ec::ec_domain_state_t::default();
         let mut data = ec::ec_ioctl_domain_state_t {
-            domain_index: u32::try_from(self.idx).map_err(|e| Error::new(ErrorKind::Other, e))?,
+            domain_index: u32::try_from(self.idx)
+                .map_err(|_| Error::DomainIdx(usize::from(self.idx)))?,
             state: &mut state,
         };
         ioctl!(self.master, ec::ioctl::DOMAIN_STATE, &mut data)?;
@@ -747,7 +739,7 @@ impl<'m> Domain<'m> {
         ioctl!(
             self.master,
             ec::ioctl::DOMAIN_QUEUE,
-            c_ulong::try_from(self.idx).map_err(|e| Error::new(ErrorKind::Other, e))?
+            c_ulong::try_from(self.idx).map_err(|_| Error::DomainIdx(usize::from(self.idx)))?
         )
         .map(|_| ())
     }

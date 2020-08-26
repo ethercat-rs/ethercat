@@ -4,11 +4,35 @@
 use crate::ec;
 use derive_new::new;
 use std::io;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("No devices available")]
+    NoDevices,
+    #[error("Sync manager index is too large")]
+    SmIdxTooLarge,
+    #[error("Invalid domain index {0}")]
+    DomainIdx(usize),
+    #[error("Kernel module version mismatch: expected {0}, found {1}")]
+    KernelModule(u32, u32),
+    #[error("Domain is not available")]
+    NoDomain,
+    #[error("Master is not activated")]
+    NotActivated,
+    #[error(transparent)]
+    Io(#[from] io::Error),
+}
+
+impl From<Error> for io::Error {
+    fn from(e: Error) -> Self {
+        io::Error::new(io::ErrorKind::Other, e)
+    }
+}
 
 pub use ethercat_types::*;
 
-pub type Error = io::Error;
-pub type Result<T> = io::Result<T>;
+pub type Result<T> = std::result::Result<T, Error>;
 pub type MasterIdx = u32;
 
 #[derive(Debug, Clone, Copy)]
