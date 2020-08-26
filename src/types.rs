@@ -35,7 +35,7 @@ pub struct SlaveRev {
 
 /// An EtherCAT slave, which is specified either by absolute position in the
 /// ring or by offset from a given alias.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum SlaveAddr {
     ByPos(u16),
     ByAlias(u16, u16),

@@ -41,6 +41,7 @@ pub enum MasterAccess {
 impl Master {
     pub fn open(idx: MasterIdx, access: MasterAccess) -> Result<Self> {
         let devpath = format!("/dev/EtherCAT{}", idx);
+        log::debug!("Open EtherCAT Master {}", devpath);
         let file = OpenOptions::new()
             .read(true)
             .write(access == MasterAccess::ReadWrite)
@@ -73,6 +74,7 @@ impl Master {
     }
 
     pub fn reserve(&self) -> Result<()> {
+        log::debug!("Reserve EtherCAT Master");
         ioctl!(self, ec::ioctl::REQUEST)?;
         Ok(())
     }
@@ -114,6 +116,7 @@ impl Master {
     }
 
     pub fn activate(&mut self) -> Result<()> {
+        log::debug!("Activate EtherCAT Master");
         let mut data = ec::ec_ioctl_master_activate_t::default();
         ioctl!(self, ec::ioctl::ACTIVATE, &mut data)?;
 
@@ -128,6 +131,7 @@ impl Master {
     }
 
     pub fn deactivate(&mut self) -> Result<()> {
+        log::debug!("Deactivate EtherCAT Master");
         ioctl!(self, ec::ioctl::DEACTIVATE)?;
         self.domains.clear();
         self.map = None;
@@ -270,6 +274,7 @@ impl Master {
     }
 
     pub fn configure_slave(&mut self, addr: SlaveAddr, expected: SlaveId) -> Result<SlaveConfig> {
+        log::debug!("Configure slave {:?}", addr);
         let mut data = ec::ec_ioctl_config_t::default();
         let (alias, pos) = addr.as_pair();
         data.alias = alias;
@@ -524,15 +529,16 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_OVERLAPPING_IO, &data).map(|_| ())
     }
 
-    pub fn config_sync_manager(&mut self, info: &SmCfg) -> Result<()> {
-        if u8::from(info.idx) >= ec::EC_MAX_SYNC_MANAGERS as u8 {
+    pub fn config_sync_manager(&mut self, cfg: &SmCfg) -> Result<()> {
+        log::debug!("Configure Sync Manager: {:?}", cfg);
+        if u8::from(cfg.idx) >= ec::EC_MAX_SYNC_MANAGERS as u8 {
             return Err(Error::new(ErrorKind::Other, "sync manager index too large"));
         }
         let mut data = ec::ec_ioctl_config_t::default();
         data.config_index = self.idx;
-        let ix = u8::from(info.idx) as usize;
-        data.syncs[ix].dir = info.direction as u32;
-        data.syncs[ix].watchdog_mode = info.watchdog_mode as u32;
+        let ix = u8::from(cfg.idx) as usize;
+        data.syncs[ix].dir = cfg.direction as u32;
+        data.syncs[ix].watchdog_mode = cfg.watchdog_mode as u32;
         data.syncs[ix].config_this = 1;
         ioctl!(self.master, ec::ioctl::SC_SYNC, &data).map(|_| ())
     }
