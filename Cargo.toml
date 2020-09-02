@@ -21,6 +21,10 @@ memmap = "0.7.0"
 num-traits = "0.2"
 thiserror = "1.0"
 
+[dev-dependencies]
+ethercat-esi = "*"
+env_logger = "*"
+
 [features]
 default = []
 
