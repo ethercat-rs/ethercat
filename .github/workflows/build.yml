@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustfmt
+      - name: Check rust formatting (rustfmt)
+        run: cargo fmt --all -- --check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Install Mercurial
+        run: sudo apt-get install -y mercurial
+      - name: Set up IgH repo
+        run: |
+          hg clone http://hg.code.sf.net/p/etherlabmaster/code ethercat-hg
+          cd ethercat-hg
+          hg update stable-1.5
+          ./bootstrap
+          ./configure --disable-8139too
+
+      - name: Build
+        run: ETHERCAT_PATH=$(pwd)/ethercat-hg cargo build
