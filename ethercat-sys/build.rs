@@ -41,6 +41,19 @@ fn main() {
             && parts[2].starts_with("EC_IO")
         {
             let name = &parts[1]["EC_IOCTL_".len()..];
+
+            // FIXME:
+            // There are constant names that start with a number
+            // so they would be invalid rust code.
+            // The problem exists e.g. if you try to
+            // compile the v1.5.2-sncn-11 branch of the synapticon
+            // fork: https://github.com/synapticon/Etherlab_EtherCAT_Master
+            // So as a first dirty workaround we just ignore them
+            // to be able to compile.
+            if name.starts_with("64_REF_CLK") {
+                continue;
+            }
+
             let mut numparts = parts[2].split("(");
             let access = match numparts.next().unwrap() {
                 "EC_IO" => match name {
