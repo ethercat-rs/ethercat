@@ -1,10 +1,7 @@
 // Part of ethercat-rs. Copyright 2018-2020 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-use std::env;
-use std::fmt::Write;
-use std::fs;
-use std::path::PathBuf;
+use std::{env, fmt::Write, fs, path::PathBuf};
 
 fn main() {
     let path = env::var("ETHERCAT_PATH").expect(
@@ -33,15 +30,15 @@ fn main() {
         .expect("Couldn't write bindings!");
 
     // Generate the EC_IOCTL_ ioctl numbers -- bindgen can't handle them.
-    let code = fs::read_to_string(&format!("{}/master/ioctl.h", path))
-        .expect("master/ioctl.h not found");
+    let code =
+        fs::read_to_string(&format!("{}/master/ioctl.h", path)).expect("master/ioctl.h not found");
     let mut new = String::new();
     for line in code.split('\n') {
         let parts = line.split_whitespace().collect::<Vec<_>>();
-        if parts.len() >= 3 &&
-            parts[0] == "#define" &&
-            parts[1].starts_with("EC_IOCTL_") &&
-            parts[2].starts_with("EC_IO")
+        if parts.len() >= 3
+            && parts[0] == "#define"
+            && parts[1].starts_with("EC_IOCTL_")
+            && parts[2].starts_with("EC_IO")
         {
             let name = &parts[1]["EC_IOCTL_".len()..];
             let mut numparts = parts[2].split("(");
@@ -49,12 +46,12 @@ fn main() {
                 "EC_IO" => match name {
                     "SEND" => "arg",
                     x if x.starts_with("DOMAIN_") => "arg",
-                    _ => "none"
+                    _ => "none",
                 },
                 "EC_IOR" => "read",
                 "EC_IOW" => "write",
                 "EC_IOWR" => "readwrite",
-                _ => unreachable!("invalid IO macro found")
+                _ => unreachable!("invalid IO macro found"),
             };
             let number = numparts.next().unwrap().trim_matches(&[')', ','][..]);
             let argtype = parts.get(3).map(|p| match p.trim_matches(')') {
@@ -63,11 +60,16 @@ fn main() {
                 "size_t" => "usize",
                 x => x,
             });
-            write!(&mut new, "ioctl!({:10} {:20} with EC, {}{}{});\n",
-                   access, name, number,
-                   if argtype.is_some() { "; " } else { "" },
-                   argtype.unwrap_or("")
-            ).unwrap();
+            write!(
+                &mut new,
+                "ioctl!({:10} {:20} with EC, {}{}{});\n",
+                access,
+                name,
+                number,
+                if argtype.is_some() { "; " } else { "" },
+                argtype.unwrap_or("")
+            )
+            .unwrap();
         }
     }
     fs::write(out_path.join("ioctls.rs"), new.as_bytes())
