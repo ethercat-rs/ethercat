@@ -59,6 +59,7 @@ fn main() {
             let number = numparts.next().unwrap().trim_matches(&[')', ','][..]);
             let argtype = parts.get(3).map(|p| match p.trim_matches(')') {
                 "uint32_t" => "u32",
+                "uint64_t" => "u64",
                 "size_t" => "usize",
                 x => x,
             });
