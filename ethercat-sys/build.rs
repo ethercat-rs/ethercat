@@ -57,7 +57,7 @@ fn main() {
             let mut numparts = parts[2].split("(");
             let access = match numparts.next().unwrap() {
                 "EC_IO" => match name {
-                    "SEND" => "arg",
+                    "SEND" | "SEND_EXT" => "arg",
                     x if x.starts_with("DOMAIN_") => "arg",
                     _ => "none",
                 },
