@@ -282,13 +282,26 @@ impl Master {
         sdo.slave_position = u16::from(slave_pos);
         sdo.sdo_position = u16::from(sdo_pos);
         ioctl!(self, ec::ioctl::SLAVE_SDO, &mut sdo)?;
-        Ok(SdoInfo {
-            pos: SdoPos::from(sdo.sdo_position),
-            idx: Idx::from(sdo.sdo_index),
-            max_sub_idx: SubIdx::from(sdo.max_subindex),
-            object_code: sdo.object_code,
-            name: c_array_to_string(sdo.name.as_ptr()),
-        })
+        #[cfg(feature = "sncn")]
+        {
+            Ok(SdoInfo {
+                pos: SdoPos::from(sdo.sdo_position),
+                idx: Idx::from(sdo.sdo_index),
+                max_sub_idx: SubIdx::from(sdo.max_subindex),
+                object_code: Some(sdo.object_code),
+                name: c_array_to_string(sdo.name.as_ptr()),
+            })
+        }
+        #[cfg(not(feature = "sncn"))]
+        {
+            Ok(SdoInfo {
+                pos: SdoPos::from(sdo.sdo_position),
+                idx: Idx::from(sdo.sdo_index),
+                max_sub_idx: SubIdx::from(sdo.max_subindex),
+                object_code: None,
+                name: c_array_to_string(sdo.name.as_ptr()),
+            })
+        }
     }
 
     pub fn get_sdo_entry(
@@ -331,13 +344,19 @@ impl Master {
     where
         T: SdoData + ?Sized,
     {
+        #[cfg(feature = "sncn")]
+        let data_ptr = data.data_ptr();
+
+        #[cfg(not(feature = "sncn"))]
+        let data_ptr = data.data_ptr() as *mut u8;
+
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
             slave_position: u16::from(position),
             sdo_index: u16::from(sdo_idx.idx),
             sdo_entry_subindex: u8::from(sdo_idx.sub_idx),
             complete_access: 0,
             data_size: data.data_size() as u64,
-            data: data.data_ptr(),
+            data: data_ptr,
             abort_code: 0,
         };
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
@@ -349,13 +368,17 @@ impl Master {
         sdo_idx: SdoIdx,
         data: &[u8],
     ) -> Result<()> {
+        #[cfg(feature = "sncn")]
+        let data_ptr = data.data_ptr();
+        #[cfg(not(feature = "sncn"))]
+        let data_ptr = data.data_ptr() as *mut u8;
         let mut data = ec::ec_ioctl_slave_sdo_download_t {
             slave_position: u16::from(position),
             sdo_index: u16::from(sdo_idx.idx),
             sdo_entry_subindex: u8::from(sdo_idx.sub_idx),
             complete_access: 1,
             data_size: data.len() as u64,
-            data: data.as_ptr(),
+            data: data_ptr,
             abort_code: 0,
         };
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
@@ -367,15 +390,36 @@ impl Master {
         sdo_idx: SdoIdx,
         target: &'t mut [u8],
     ) -> Result<&'t mut [u8]> {
+        let slave_position = u16::from(position);
+        let sdo_index = u16::from(sdo_idx.idx);
+        let sdo_entry_subindex = u8::from(sdo_idx.sub_idx);
+        let target_size = target.len() as u64;
+        let data_size = 0;
+        let abort_code = 0;
+
+        #[cfg(not(feature = "sncn"))]
         let mut data = ec::ec_ioctl_slave_sdo_upload_t {
-            slave_position: u16::from(position),
-            sdo_index: u16::from(sdo_idx.idx),
-            sdo_entry_subindex: u8::from(sdo_idx.sub_idx),
-            target_size: target.len() as u64,
+            slave_position,
+            sdo_index,
+            sdo_entry_subindex,
+            target_size,
             target: target.as_mut_ptr(),
-            data_size: 0,
-            abort_code: 0,
+            data_size,
+            abort_code,
         };
+
+        #[cfg(feature = "sncn")]
+        let mut data = ec::ec_ioctl_slave_sdo_upload_t {
+            slave_position,
+            sdo_index,
+            sdo_entry_subindex,
+            target_size,
+            target: target.as_mut_ptr(),
+            data_size,
+            abort_code,
+            complete_access: 0,
+        };
+
         ioctl!(self, ec::ioctl::SLAVE_SDO_UPLOAD, &mut data)?;
         Ok(&mut target[..data.data_size as usize])
     }
@@ -511,6 +555,7 @@ impl<'m> SlaveConfig<'m> {
         ioctl!(self.master, ec::ioctl::SC_WATCHDOG, &data).map(|_| ())
     }
 
+    #[cfg(feature = "sncn")]
     pub fn config_overlapping_pdos(&mut self, allow: bool) -> Result<()> {
         let mut data = ec::ec_ioctl_config_t::default();
         data.config_index = self.idx;
