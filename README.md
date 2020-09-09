@@ -23,7 +23,9 @@ In order to build the raw wrapper crate `ethercat-sys`, you need to set the
 environment variable `ETHERCAT_PATH` to the location of a checkout of the IgH
 Etherlab repository, *after running `configure` there*.
 
-The minimum tested Rust version is 1.34.2.
+- The minimum tested Rust version is 1.34.2.
+- The recommended EtherCAT source is: http://hg.code.sf.net/p/etherlabmaster/code
+- The recommended Revision is `334c34cfd2e5`
 
 # Licensing
 
