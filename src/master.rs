@@ -491,6 +491,14 @@ impl Master {
         Ok(())
     }
 
+    #[cfg(feature = "sncn")]
+    pub fn dict_upload(&mut self, slave_pos: SlavePos) -> Result<()> {
+        let mut data = ec::ec_ioctl_slave_dict_upload_t::default();
+        data.slave_position = u16::from(slave_pos);
+        ioctl!(self, ec::ioctl::SLAVE_DICT_UPLOAD, &mut data)?;
+        Ok(())
+    }
+
     // XXX missing: write_idn, read_idn,
     // application_time, sync_reference_clock, sync_slave_clocks,
     // reference_clock_time, sync_monitor_queue, sync_monitor_process
