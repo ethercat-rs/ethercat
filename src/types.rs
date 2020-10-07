@@ -219,7 +219,7 @@ impl PdoCfg {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AlState {
     Init = 1,
     Preop = 2,

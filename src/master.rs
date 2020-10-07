@@ -483,6 +483,14 @@ impl Master {
         })
     }
 
+    pub fn request_state(&mut self, slave_pos: SlavePos, state: AlState) -> Result<()> {
+        let mut data = ec::ec_ioctl_slave_state_t::default();
+        data.slave_position = u16::from(slave_pos);
+        data.al_state = state as u8;
+        ioctl!(self, ec::ioctl::SLAVE_STATE, &mut data)?;
+        Ok(())
+    }
+
     // XXX missing: write_idn, read_idn,
     // application_time, sync_reference_clock, sync_slave_clocks,
     // reference_clock_time, sync_monitor_queue, sync_monitor_process
