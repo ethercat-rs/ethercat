@@ -340,7 +340,13 @@ impl Master {
         })
     }
 
-    pub fn sdo_download<T>(&mut self, position: SlavePos, sdo_idx: SdoIdx, data: &T) -> Result<()>
+    pub fn sdo_download<T>(
+        &mut self,
+        position: SlavePos,
+        sdo_idx: SdoIdx,
+        complete_access: bool,
+        data: &T,
+    ) -> Result<()>
     where
         T: SdoData + ?Sized,
     {
@@ -354,30 +360,8 @@ impl Master {
             slave_position: u16::from(position),
             sdo_index: u16::from(sdo_idx.idx),
             sdo_entry_subindex: u8::from(sdo_idx.sub_idx),
-            complete_access: 0,
+            complete_access: if complete_access { 1 } else { 0 },
             data_size: data.data_size() as u64,
-            data: data_ptr,
-            abort_code: 0,
-        };
-        ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
-    }
-
-    pub fn sdo_download_complete(
-        &mut self,
-        position: SlavePos,
-        sdo_idx: SdoIdx,
-        data: &[u8],
-    ) -> Result<()> {
-        #[cfg(feature = "sncn")]
-        let data_ptr = data.data_ptr();
-        #[cfg(not(feature = "sncn"))]
-        let data_ptr = data.data_ptr() as *mut u8;
-        let mut data = ec::ec_ioctl_slave_sdo_download_t {
-            slave_position: u16::from(position),
-            sdo_index: u16::from(sdo_idx.idx),
-            sdo_entry_subindex: u8::from(sdo_idx.sub_idx),
-            complete_access: 1,
-            data_size: data.len() as u64,
             data: data_ptr,
             abort_code: 0,
         };
@@ -388,6 +372,7 @@ impl Master {
         &self,
         position: SlavePos,
         sdo_idx: SdoIdx,
+        complete_access: bool,
         target: &'t mut [u8],
     ) -> Result<&'t mut [u8]> {
         let slave_position = u16::from(position);
@@ -417,7 +402,7 @@ impl Master {
             target: target.as_mut_ptr(),
             data_size,
             abort_code,
-            complete_access: 0,
+            complete_access: if complete_access { 1 } else { 0 },
         };
 
         ioctl!(self, ec::ioctl::SLAVE_SDO_UPLOAD, &mut data)?;
