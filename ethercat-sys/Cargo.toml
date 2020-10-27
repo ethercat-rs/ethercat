@@ -12,3 +12,19 @@ ioctl-sys = "0.5.2"
 
 [build-dependencies]
 bindgen = "0.55.1"
+
+[features]
+default = []
+
+# Enable this feature to use it with the
+# synapticon branch `release/v1.5.2-sncn-11`
+# at https://github.com/synapticon/Etherlab_EtherCAT_Master
+sncn = []
+
+# Enable this feature to use pregenerated bindings.
+# CAUTION: If your kernel module was not built
+# with the corresponding version, it might break your application.
+pregenerated-bindings = []
+
+[package.metadata.docs.rs]
+features = [ "pregenerated-bindings" ]
