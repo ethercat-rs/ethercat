@@ -2,7 +2,7 @@
 
 [package]
 name = "ethercat"
-version = "0.1.3"
+version = "0.2.0"
 description = "Binding to the IgH/Etherlab open-source EtherCAT master"
 keywords = ["ethercat", "master", "etherlab", "fieldbus", "automation"]
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>", "slowtec GmbH <post@slowtec.de>"]
@@ -12,12 +12,12 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
-derive-new = "0.5.6"
+derive-new = "0.5"
 ethercat-sys = { path = "ethercat-sys", version = "0.2" }
 ethercat-types = "0.3"
-libc = "0.2.49"
+libc = "0.2"
 log = "0.4"
-memmap = "0.7.0"
+memmap = "0.7"
 num-traits = "0.2"
 thiserror = "1.0"
 
