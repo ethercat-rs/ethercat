@@ -1,5 +1,5 @@
 use ethercat::{
-    DomainIdx as DomainIndex, Idx, Master, MasterAccess, Offset, PdoCfg, PdoEntryIdx,
+    AlState, DomainIdx as DomainIndex, Idx, Master, MasterAccess, Offset, PdoCfg, PdoEntryIdx,
     PdoEntryIdx as PdoEntryIndex, PdoEntryInfo, PdoEntryPos, PdoIdx, SlaveAddr, SlaveId, SlavePos,
     SmCfg, SubIdx,
 };
@@ -26,6 +26,7 @@ pub fn main() -> Result<(), io::Error> {
         }
     };
 
+    log::debug!("Parse XML file {}", file_name);
     let mut esi_file = File::open(file_name)?;
     let mut esi_xml_string = String::new();
     esi_file.read_to_string(&mut esi_xml_string)?;
@@ -75,12 +76,16 @@ pub fn init_master(
     io::Error,
 > {
     let mut master = Master::open(idx, MasterAccess::ReadWrite)?;
+    log::debug!("Reserve master");
     master.reserve()?;
+    log::debug!("Create domain");
     let domain_idx = master.create_domain()?;
     let mut offsets: HashMap<SlavePos, HashMap<PdoEntryIndex, (u8, Offset)>> = HashMap::new();
 
     for (dev_nr, dev) in esi.description.devices.iter().enumerate() {
         let slave_pos = SlavePos::from(dev_nr as u16);
+        log::debug!("Request PreOp state for {:?}", slave_pos);
+        master.request_state(slave_pos, AlState::Preop)?;
         let slave_info = master.get_slave_info(slave_pos)?;
         log::info!("Found device {}:{:?}", dev.name, slave_info);
         let slave_addr = SlaveAddr::ByPos(dev_nr as u16);
