@@ -373,7 +373,7 @@ impl Master {
         &self,
         position: SlavePos,
         sdo_idx: SdoIdx,
-        complete_access: bool,
+        #[allow(unused_variables)] complete_access: bool,
         target: &'t mut [u8],
     ) -> Result<&'t mut [u8]> {
         let slave_position = u16::from(position);
