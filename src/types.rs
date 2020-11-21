@@ -20,6 +20,8 @@ pub enum Error {
     NoDomain,
     #[error("Master is not activated")]
     NotActivated,
+    #[error("Invalid AL state 0x{0:X}")]
+    InvalidAlState(u8),
     #[error(transparent)]
     Io(#[from] io::Error),
 }
@@ -215,26 +217,6 @@ impl PdoCfg {
         Self {
             idx,
             entries: vec![],
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum AlState {
-    Init = 1,
-    Preop = 2,
-    Safeop = 4,
-    Op = 8,
-}
-
-impl From<u32> for AlState {
-    fn from(st: u32) -> Self {
-        match st {
-            1 => AlState::Init,
-            2 => AlState::Preop,
-            4 => AlState::Safeop,
-            8 => AlState::Op,
-            x => panic!("invalid state {}", x),
         }
     }
 }

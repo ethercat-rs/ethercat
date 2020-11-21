@@ -231,7 +231,8 @@ impl Master {
             },
             alias: data.alias,
             current_on_ebus: data.current_on_ebus,
-            al_state: AlState::from(data.al_state as u32),
+            al_state: AlState::try_from(data.al_state)
+                .map_err(|_| Error::InvalidAlState(data.al_state))?,
             error_flag: data.error_flag,
             sync_count: data.sync_count,
             sdo_count: data.sdo_count,
@@ -525,10 +526,12 @@ impl<'m> SlaveConfig<'m> {
             state: &mut state,
         };
         ioctl!(self.master, ec::ioctl::SC_STATE, &mut data)?;
+        let al_state_u8 = state.al_state() as u8;
         Ok(SlaveConfigState {
             online: state.online() != 0,
             operational: state.operational() != 0,
-            al_state: AlState::from(state.al_state()),
+            al_state: AlState::try_from(al_state_u8)
+                .map_err(|_| Error::InvalidAlState(al_state_u8))?,
         })
     }
 
