@@ -238,6 +238,8 @@ impl SdoData for i8 {}
 impl SdoData for i16 {}
 impl SdoData for i32 {}
 impl SdoData for i64 {}
+impl SdoData for f32 {}
+impl SdoData for f64 {}
 
 impl SdoData for &'_ [u8] {
     fn data_ptr(&self) -> *const u8 {
