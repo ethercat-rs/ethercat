@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.2 (2021-03-27)
+
+- Implement `SdoData` for floating point types
+- Add bindings to distributed-clock related APIs on `Master`
+
+## v0.2.1 (2020-11-21)
+
+- Use `AlState` from `ethercat-types`
+
 ## v0.2.0 (2020-11-02)
 
 - Move to [ethercat-rs](https://github.com/ethercat-rs) GitHub organization
