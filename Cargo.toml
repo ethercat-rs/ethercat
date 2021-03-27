@@ -2,7 +2,7 @@
 
 [package]
 name = "ethercat"
-version = "0.2.1"
+version = "0.2.2"
 description = "Binding to the IgH/Etherlab open-source EtherCAT master"
 keywords = ["ethercat", "master", "etherlab", "fieldbus", "automation"]
 authors = ["Georg Brandl <g.brandl@fz-juelich.de>", "slowtec GmbH <post@slowtec.de>"]
