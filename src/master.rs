@@ -485,9 +485,39 @@ impl Master {
         Ok(())
     }
 
-    // XXX missing: write_idn, read_idn,
-    // application_time, sync_reference_clock, sync_slave_clocks,
-    // reference_clock_time, sync_monitor_queue, sync_monitor_process
+    pub fn set_application_time(&mut self, app_time: u64) -> Result<()> {
+        ioctl!(self, ec::ioctl::APP_TIME, &app_time)?;
+        Ok(())
+    }
+
+    pub fn sync_reference_clock(&mut self) -> Result<()> {
+        ioctl!(self, ec::ioctl::SYNC_REF)?;
+        Ok(())
+    }
+
+    pub fn sync_slave_clocks(&mut self) -> Result<()> {
+        ioctl!(self, ec::ioctl::SYNC_SLAVES)?;
+        Ok(())
+    }
+
+    pub fn sync_monitor_queue(&mut self) -> Result<()> {
+        ioctl!(self, ec::ioctl::SYNC_MON_QUEUE)?;
+        Ok(())
+    }
+
+    pub fn sync_monitor_process(&mut self) -> Result<u32> {
+        let mut time = 0;
+        ioctl!(self, ec::ioctl::SYNC_MON_PROCESS, &mut time)?;
+        Ok(time)
+    }
+
+    pub fn get_reference_clock_time(&mut self) -> Result<u32> {
+        let mut time = 0;
+        ioctl!(self, ec::ioctl::REF_CLOCK_TIME, &mut time)?;
+        Ok(time)
+    }
+
+    // XXX missing: write_idn, read_idn
 }
 
 fn c_array_to_string(data: *const i8) -> String {
