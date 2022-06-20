@@ -85,7 +85,7 @@ pub fn init_master(
     for (dev_nr, dev) in esi.description.devices.iter().enumerate() {
         let slave_pos = SlavePos::from(dev_nr as u16);
         log::debug!("Request PreOp state for {:?}", slave_pos);
-        master.request_state(slave_pos, AlState::Preop)?;
+        master.request_state(slave_pos, AlState::PreOp)?;
         let slave_info = master.get_slave_info(slave_pos)?;
         log::info!("Found device {}:{:?}", dev.name, slave_info);
         let slave_addr = SlaveAddr::ByPos(dev_nr as u16);

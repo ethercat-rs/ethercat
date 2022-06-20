@@ -3,7 +3,7 @@ use ethercat::{AlState, Master, MasterAccess, SdoEntryAddr, SdoIdx, SdoPos, Slav
 pub fn main() -> Result<(), std::io::Error> {
     let slave_pos = SlavePos::from(0);
     let mut master = Master::open(0, MasterAccess::ReadWrite)?;
-    master.request_state(slave_pos, AlState::Preop)?;
+    master.request_state(slave_pos, AlState::PreOp)?;
     #[cfg(feature = "sncn")]
     master.dict_upload(slave_pos)?;
     let sdo_count = master.get_slave_info(slave_pos)?.sdo_count;
