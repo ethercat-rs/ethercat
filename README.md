@@ -24,8 +24,11 @@ environment variable `ETHERCAT_PATH` to the location of a checkout of the IgH
 Etherlab repository, *after running `configure` there*.
 
 - The minimum tested Rust version is 1.34.2.
-- The recommended EtherCAT source is: http://hg.code.sf.net/p/etherlabmaster/code
-- The recommended Revision is `334c34cfd2e5`
+- The recommended EtherCAT source is: https://gitlab.com/etherlab.org/ethercat
+
+Bindings have been pregenerated for revision `7fd991bec7` - if you activate the
+feature `pregenerated-bindings`, you don't need the master code to build, but
+the kernel modules must match that revision.
 
 # Licensing
 
