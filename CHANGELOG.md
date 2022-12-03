@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.3 (2022-12-03)
+
+- Add `Master::foe_read` and `Master::foe_write` methods (PR #35)
+
 ## v0.2.2 (2021-03-27)
 
 - Implement `SdoData` for floating point types

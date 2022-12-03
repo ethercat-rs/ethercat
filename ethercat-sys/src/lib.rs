@@ -1,4 +1,4 @@
-// Part of ethercat-rs. Copyright 2018-2020 by the authors.
+// Part of ethercat-rs. Copyright 2018-2022 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
 #![allow(non_upper_case_globals)]
