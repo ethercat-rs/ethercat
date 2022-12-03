@@ -5,6 +5,7 @@ use ethercat_sys as ec;
 
 mod master;
 mod types;
+mod convert;
 
 pub use self::{
     master::{Domain, Master, MasterAccess, SlaveConfig},

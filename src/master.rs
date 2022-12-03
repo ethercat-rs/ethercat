@@ -1,7 +1,7 @@
 // Part of ethercat-rs. Copyright 2018-2022 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-use crate::{ec, types::*};
+use crate::{ec, convert, types::*};
 use num_traits::cast::FromPrimitive;
 use std::{
     collections::HashMap,
@@ -300,7 +300,7 @@ impl Master {
                 idx: Idx::from(sdo.sdo_index),
                 max_sub_idx: SubIdx::from(sdo.max_subindex),
                 object_code: None,
-                name: c_array_to_string(sdo.name.as_ptr()),
+                name: convert::c_array_to_string(sdo.name.as_ptr()),
             })
         }
     }
@@ -337,7 +337,7 @@ impl Master {
             }),
             bit_len: entry.bit_length,
             access: get_sdo_entry_access(entry.read_access, entry.write_access),
-            description: c_array_to_string(entry.description.as_ptr()),
+            description: convert::c_array_to_string(entry.description.as_ptr()),
         })
     }
 
@@ -426,7 +426,7 @@ impl Master {
             pos: PdoPos::from(pdo.pdo_pos as u8),
             idx: Idx::from(pdo.index),
             entry_count: pdo.entry_count,
-            name: c_array_to_string(pdo.name.as_ptr()),
+            name: convert::c_array_to_string(pdo.name.as_ptr()),
         })
     }
 
@@ -450,7 +450,7 @@ impl Master {
                 sub_idx: SubIdx::from(entry.subindex),
             },
             bit_len: entry.bit_length,
-            name: c_array_to_string(entry.name.as_ptr()),
+            name: convert::c_array_to_string(entry.name.as_ptr()),
         })
     }
 
@@ -518,7 +518,7 @@ impl Master {
     }
 
     pub fn foe_read(&mut self, idx: SlavePos, name: &str) -> Result<Vec<u8>> {
-        let file_name = string_to_foe_name(name)?;
+        let file_name = convert::string_to_foe_name(name)?;
         // FIXME: this is the same as in the c-implementation. Should read in chunks instead of a
         // fixed size buffer. The ioctl-call in the master pre-allocates a 10000 byte buffer, so we
         // do the same here.
@@ -540,7 +540,7 @@ impl Master {
     }
 
     pub fn foe_write(&mut self, idx: SlavePos, name: &str, data: &[u8]) -> Result<()> {
-        let file_name = string_to_foe_name(name)?;
+        let file_name = convert::string_to_foe_name(name)?;
 
         let buffer = data.as_ptr() as *mut _;
         let data = ec::ec_ioctl_slave_foe_t {
@@ -557,79 +557,6 @@ impl Master {
     }
 
     // XXX missing: write_idn, read_idn
-}
-
-fn string_to_foe_name(input: &str) -> Result<[std::os::raw::c_char; 32]> {
-    if input.len() > 32 {
-        let e = io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!(
-                "FoE name can have a maximum length of 32, '{}' has {}",
-                input,
-                input.len()
-            ),
-        );
-        return Err(Error::Io(e));
-    }
-    let mut foe_name: [std::os::raw::c_char; 32] = [0; 32];
-    input
-        .as_bytes()
-        .iter()
-        .zip(&mut foe_name)
-        .for_each(|(i, r)| *r = *i as _);
-    Ok(foe_name)
-}
-
-#[test]
-fn test_string_to_foe_name() {
-    let cmp = |s: String, chars: [i8; 32]| {
-        let arr: Vec<i8> = s.as_bytes().iter().map(|c| *c as i8).collect();
-        assert_eq!(chars.len(), 32);
-        assert_eq!(chars[0..arr.len()], arr);
-        assert_eq!(chars[arr.len()..], vec![0; 32 - s.len()]);
-    };
-
-    let name = String::from("some Name of a FoE file");
-    let chars = string_to_foe_name(&name).expect("Name is ok");
-    cmp(name, chars);
-
-    let name = String::from("short");
-    let chars = string_to_foe_name(&name).expect("Name is ok");
-    cmp(name, chars);
-
-    let name = String::from("\u{2665}\u{1F494};");
-    let chars = string_to_foe_name(&name).expect("Name is ok");
-    cmp(name, chars);
-
-    let name = String::from("a name that is just too long so we'll see what happens");
-    let e = string_to_foe_name(&name).unwrap_err();
-    assert_eq!(
-        e.to_string(),
-        format!(
-            "FoE name can have a maximum length of 32, '{}' has {}",
-            name,
-            name.len()
-        )
-    );
-}
-
-fn c_array_to_string(data: *const i8) -> String {
-    unsafe { CStr::from_ptr(data).to_string_lossy().into_owned() }
-}
-
-#[test]
-fn test_c_array_to_string() {
-    let arr: [i8; 64] = [0_i8; 64];
-    assert_eq!(c_array_to_string(arr.as_ptr()), "");
-
-    let mut arr: [i8; 64] = [0_i8; 64];
-    [80_i8, 114, 111, 100, 117, 99, 116, 32, 99, 111, 100, 101]
-        .iter()
-        .enumerate()
-        .for_each(|(idx, v)| {
-            arr[idx] = *v;
-        });
-    assert_eq!(c_array_to_string(arr.as_ptr()), "Product code");
 }
 
 pub struct SlaveConfig<'m> {
