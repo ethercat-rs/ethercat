@@ -2,8 +2,8 @@
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
 use crate::types::{Error, Result};
-use std::io;
 use std::ffi::CStr;
+use std::io;
 use std::os::raw::c_char;
 
 pub(crate) fn string_to_foe_name(input: &str) -> Result<[c_char; 32]> {
