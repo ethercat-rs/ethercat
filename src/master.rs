@@ -793,6 +793,50 @@ impl<'m> SlaveConfig<'m> {
         Ok(data.overruns)
     }
 
+    pub fn read_register(&mut self, address: u16, buffer: &mut [u8]) -> Result<()> {
+        let mut data = ec::ec_ioctl_reg_request_t::default();
+        data.config_index = self.idx;
+        data.mem_size = buffer.len() as _;
+        data.address = address;
+        data.transfer_size = buffer.len() as _;
+        data.data = buffer.as_mut_ptr();
+
+        ioctl!(self.master, ec::ioctl::SC_REG_REQUEST, &mut data)?;
+        ioctl!(self.master, ec::ioctl::REG_REQUEST_READ, &mut data)?;
+        // TODO: add timeout
+        while data.state <= ec::EC_REQUEST_BUSY {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            ioctl!(self.master, ec::ioctl::REG_REQUEST_STATE, &mut data)?;
+        }
+        if data.state == ec::EC_REQUEST_SUCCESS {
+            ioctl!(self.master, ec::ioctl::REG_REQUEST_DATA, &mut data).map(|_| ())
+        } else {
+            Err(crate::types::Error::RegRequestFailed)
+        }
+    }
+
+    pub fn write_register(&mut self, address: u16, buffer: &[u8]) -> Result<()> {
+        let mut data = ec::ec_ioctl_reg_request_t::default();
+        data.config_index = self.idx;
+        data.mem_size = buffer.len() as _;
+        data.address = address;
+        data.transfer_size = buffer.len() as _;
+        data.data = buffer.as_ptr() as _;
+
+        ioctl!(self.master, ec::ioctl::SC_REG_REQUEST, &mut data)?;
+        ioctl!(self.master, ec::ioctl::REG_REQUEST_WRITE, &mut data)?;
+        // TODO: add timeout
+        while data.state <= ec::EC_REQUEST_BUSY {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            ioctl!(self.master, ec::ioctl::REG_REQUEST_STATE, &mut data)?;
+        }
+        if data.state == ec::EC_REQUEST_SUCCESS {
+            Ok(())
+        } else {
+            Err(crate::types::Error::RegRequestFailed)
+        }
+    }
+
     // XXX missing: create_sdo_request, create_reg_request, create_voe_handler
 }
 
