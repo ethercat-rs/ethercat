@@ -32,10 +32,11 @@ the kernel modules must match that revision.
 
 # Licensing
 
-The Etherlab master is licensed under the GPLv2, and provides Linux kernel
-modules and a userspace library, with an ioctl based interface.  This crate does
-not use the userspace library (which is a simple wrapper around the ioctls
-anyway) but rather communicates with the kernel modules through the raw ioctls.
+The Etherlab master provides Linux kernel modules under GPLv2 with an ioctl
+based interface, and a userspace library under LGPLv2.1.  This crate does
+not use the userspace library (which is mostly a simple wrapper around the
+ioctls anyway) but rather communicates with the kernel modules through the
+raw ioctls.
 
 Therefore, we believe that the crate does not need to be GPLv2-licensed, and
 are using the dual MIT/Apache-2 license commonly used for Rust crates.
