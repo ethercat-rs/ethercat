@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.4 (2023-02-24)
+
+- Fix compilation on ARM (PR #40)
+
 ## v0.2.3 (2022-12-03)
 
 - Add `Master::foe_read` and `Master::foe_write` methods (PR #35)
