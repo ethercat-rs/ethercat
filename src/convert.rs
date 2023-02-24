@@ -61,7 +61,11 @@ fn test_string_to_foe_name() {
 }
 
 pub(crate) fn c_array_to_string(data: *const i8) -> String {
-    unsafe { CStr::from_ptr(data).to_string_lossy().into_owned() }
+    unsafe {
+        CStr::from_ptr(data as *const c_char)
+            .to_string_lossy()
+            .into_owned()
+    }
 }
 
 #[test]
