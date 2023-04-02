@@ -113,7 +113,7 @@ impl Master {
 
         self.map = unsafe {
             memmap::MmapOptions::new()
-                .len(data.process_data_size as usize)
+                .len(data.process_data_size)
                 .map_mut(&self.file)
                 .map(Some)?
         };
@@ -362,7 +362,7 @@ impl Master {
             sdo_index: u16::from(sdo_idx.idx),
             sdo_entry_subindex: u8::from(sdo_idx.sub_idx),
             complete_access: if complete_access { 1 } else { 0 },
-            data_size: data.data_size() as u64,
+            data_size: data.data_size(),
             data: data_ptr,
             abort_code: 0,
         };
@@ -379,7 +379,7 @@ impl Master {
         let slave_position = u16::from(position);
         let sdo_index = u16::from(sdo_idx.idx);
         let sdo_entry_subindex = u8::from(sdo_idx.sub_idx);
-        let target_size = target.len() as u64;
+        let target_size = target.len();
         let data_size = 0;
         let abort_code = 0;
 
@@ -407,7 +407,7 @@ impl Master {
         };
 
         ioctl!(self, ec::ioctl::SLAVE_SDO_UPLOAD, &mut data)?;
-        Ok(&mut target[..data.data_size as usize])
+        Ok(&mut target[..data.data_size])
     }
 
     pub fn get_pdo(
@@ -473,7 +473,7 @@ impl Master {
         let mut data = ec::ec_ioctl_slave_state_t::default();
         data.slave_position = u16::from(slave_pos);
         data.al_state = state as u8;
-        ioctl!(self, ec::ioctl::SLAVE_STATE, &mut data)?;
+        ioctl!(self, ec::ioctl::SLAVE_STATE, &data)?;
         Ok(())
     }
 
@@ -527,15 +527,15 @@ impl Master {
         let mut data = ec::ec_ioctl_slave_foe_t {
             slave_position: idx.into(),
             offset: 0,
-            buffer_size: FOE_SIZE as u64,
+            buffer_size: FOE_SIZE,
             buffer: buf.as_mut_ptr(),
             file_name,
             ..Default::default()
         };
         ioctl!(self, ec::ioctl::SLAVE_FOE_READ, &mut data)?;
 
-        assert!(data.data_size <= FOE_SIZE as u64);
-        buf.truncate(data.data_size as usize);
+        assert!(data.data_size <= FOE_SIZE);
+        buf.truncate(data.data_size);
         Ok(buf)
     }
 
@@ -546,7 +546,7 @@ impl Master {
         let data = ec::ec_ioctl_slave_foe_t {
             slave_position: idx.into(),
             offset: 0,
-            buffer_size: data.len() as u64,
+            buffer_size: data.len(),
             buffer,
             file_name,
             ..Default::default()
@@ -589,7 +589,7 @@ impl<'m> SlaveConfig<'m> {
     pub fn config_sm_pdos(&mut self, sm_cfg: SmCfg, pdo_cfgs: &[PdoCfg]) -> Result<()> {
         self.config_sync_manager(&sm_cfg)?;
         self.clear_pdo_assignments(sm_cfg.idx)?;
-        for pdo_cfg in &*pdo_cfgs {
+        for pdo_cfg in pdo_cfgs {
             self.add_pdo_assignment(sm_cfg.idx, pdo_cfg.idx)?;
             if !pdo_cfg.entries.is_empty() {
                 self.clear_pdo_mapping(pdo_cfg.idx)?;
@@ -730,7 +730,7 @@ impl<'m> SlaveConfig<'m> {
             index: u16::from(index.idx),
             subindex: u8::from(index.sub_idx),
             data: data.data_ptr(),
-            size: data.data_size() as u64,
+            size: data.data_size(),
             complete_access: 0,
         };
         ioctl!(self.master, ec::ioctl::SC_SDO, &data).map(|_| ())
@@ -742,7 +742,7 @@ impl<'m> SlaveConfig<'m> {
             index: u16::from(index.idx),
             subindex: u8::from(index.sub_idx),
             data: data.as_ptr(),
-            size: data.len() as u64,
+            size: data.len(),
             complete_access: 1,
         };
         ioctl!(self.master, ec::ioctl::SC_SDO, &data).map(|_| ())
@@ -761,7 +761,7 @@ impl<'m> SlaveConfig<'m> {
             idn,
             al_state: al_state as u32,
             data: data.as_ptr(),
-            size: data.len() as u64,
+            size: data.len(),
         };
         ioctl!(self.master, ec::ioctl::SC_IDN, &data).map(|_| ())
     }
@@ -769,7 +769,7 @@ impl<'m> SlaveConfig<'m> {
     pub fn set_emerg_size(&mut self, elements: u64) -> Result<()> {
         let mut data = ec::ec_ioctl_sc_emerg_t::default();
         data.config_index = self.idx;
-        data.size = elements;
+        data.size = elements as usize;
         ioctl!(self.master, ec::ioctl::SC_EMERG_SIZE, &data).map(|_| ())
     }
 
@@ -829,7 +829,7 @@ impl<'m> Domain<'m> {
         ioctl!(
             self.master,
             ec::ioctl::DOMAIN_PROCESS,
-            c_ulong::from(usize::from(self.idx) as u64)
+            usize::from(self.idx) as c_ulong
         )
         .map(|_| ())
     }

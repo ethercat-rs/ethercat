@@ -55,7 +55,7 @@ fn main() {
                     continue;
                 }
 
-                let mut numparts = parts[2].split("(");
+                let mut numparts = parts[2].split('(');
                 let access = match numparts.next().unwrap() {
                     "EC_IO" => match name {
                         "SEND" | "SEND_EXT" => "arg",
@@ -74,9 +74,9 @@ fn main() {
                     "size_t" => "usize",
                     x => x,
                 });
-                write!(
+                writeln!(
                     &mut new,
-                    "ioctl!({:10} {:20} with EC, {}{}{});\n",
+                    "ioctl!({:10} {:20} with EC, {}{}{});",
                     access,
                     name,
                     number,
