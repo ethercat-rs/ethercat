@@ -22,6 +22,8 @@ pub enum Error {
     NotActivated,
     #[error("Invalid AL state 0x{0:X}")]
     InvalidAlState(u8),
+    #[error("SDO/VoE/register request failed")]
+    RequestFailed,
     #[error(transparent)]
     Io(#[from] io::Error),
 }
