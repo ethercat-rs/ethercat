@@ -9,7 +9,7 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(all(not(feature = "sncn"), feature = "pregenerated-bindings"))]
-include!("bindings-v1.5-334c34cfd2e5.rs");
+include!("bindings-v1.5-c022ddbcf254.rs");
 
 #[cfg(all(feature = "sncn", feature = "pregenerated-bindings"))]
 include!("bindings-v1.5.2-sncn-11.rs");
@@ -24,7 +24,7 @@ pub mod ioctl {
     include!(concat!(env!("OUT_DIR"), "/ioctls.rs"));
 
     #[cfg(all(not(feature = "sncn"), feature = "pregenerated-bindings"))]
-    include!("ioctls-v1.5-334c34cfd2e5.rs");
+    include!("ioctls-v1.5-c022ddbcf254.rs");
 
     #[cfg(all(feature = "sncn", feature = "pregenerated-bindings"))]
     include!("ioctls-v1.5.2-sncn-11.rs");

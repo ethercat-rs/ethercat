@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.0 (2023-04-05)
+
+- Bump MSRV to 1.58.1 and bindgen to 0.63 (PR #42)
+- Update `pregenerated-bindings` to commit c022ddbc of the master code
+
 ## v0.2.4 (2023-02-24)
 
 - Fix compilation on ARM (PR #40)
