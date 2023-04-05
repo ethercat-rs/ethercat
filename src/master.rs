@@ -1,6 +1,8 @@
 // Part of ethercat-rs. Copyright 2018-2022 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
+#![allow(clippy::field_reassign_with_default)]
+
 use crate::{convert, ec, types::*};
 use num_traits::cast::FromPrimitive;
 use std::{
@@ -313,7 +315,7 @@ impl Master {
         let mut entry = ec::ec_ioctl_slave_sdo_entry_t::default();
         entry.slave_position = u16::from(slave_pos);
         let (spec, sub) = match addr {
-            SdoEntryAddr::ByPos(pos, sub) => ((u16::from(pos) as i32) * -1, sub),
+            SdoEntryAddr::ByPos(pos, sub) => (-(u16::from(pos) as i32), sub),
             SdoEntryAddr::ByIdx(idx) => (u16::from(idx.idx) as i32, idx.sub_idx),
         };
         entry.sdo_spec = spec;

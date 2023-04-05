@@ -128,6 +128,7 @@ pub enum SlavePortType {
     MII,
 }
 
+#[allow(clippy::derivable_impls)] // later we can use the new #[default] attr
 impl Default for SlavePortType {
     fn default() -> Self {
         SlavePortType::NotImplemented
