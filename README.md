@@ -2,7 +2,7 @@
 
 [![Apache 2.0 licensed](https://img.shields.io/badge/license-Apache2.0-blue.svg)](./LICENSE-APACHE)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
-[![crates.io](http://meritbadge.herokuapp.com/ethercat)](https://crates.io/crates/ethercat)
+[![crates.io](https://img.shields.io/crates/v/ethercat.svg)](https://crates.io/crates/ethercat)
 [![docs](https://docs.rs/ethercat/badge.svg)](https://docs.rs/ethercat)
 
 [Documentation](https://docs.rs/crate/ethercat/)
