@@ -242,10 +242,6 @@ impl Master {
 		## Parameters
 		
 		- `dev_idx` -	Index of the device (0 = main device, 1 = first backup device, ...). 
-		
-		## Returns
-		
-		Zero on success, otherwise negative error code. 
     */
     pub fn link_state(&self, dev_idx: u32) -> Result<MasterState> {
         let mut state = ec::ec_master_link_state_t::default();
@@ -716,12 +712,6 @@ impl Master {
 		## Attention
 			
 		The returned time is the system time of the reference clock minus the transmission delay of the reference clock.
-
-		## Return values
-		
-		0	success, system time was written into time.
-		-ENXIO	No reference clock found.
-		-EIO	Slave synchronization datagram was not received.
     */
     pub fn get_reference_clock_time(&mut self) -> Result<u32> {
         let mut time = 0;

@@ -1,12 +1,36 @@
 // Part of ethercat-rs. Copyright 2018-2022 by the authors.
 // This work is dual-licensed under Apache 2.0 and MIT terms.
 
-
-//! 	This crate provide an API that wraps IOCTL calls to the EthercCAT master kernel module developped by IgH/Etherlab.
+//! This crate provide an API that wraps IOCTL calls to the EthercCAT master kernel module developped by IgH/Etherlab.
 //! 	
-//! 	EtherCAT is an Ethernet-based fieldbus system, originally invented by Beckhoff GmbH but now used by numerous providers of automation related hardware. The IgH master lets you provide an EtherCAT master on a Linux machine without specialized hardware.
+//! EtherCAT is an Ethernet-based fieldbus system, originally invented by Beckhoff GmbH but now used by numerous providers of automation related hardware. The IgH master lets you provide an EtherCAT master on a Linux machine without specialized hardware.
 //! 	
-//! 	This crate mainly features struct [Master] - this struct is the entry point to the ethercat master kernel module, it exposes all its functions
+//! This crate mainly features struct [Master] - this struct is the entry point to the ethercat master kernel module, it exposes all its functions
+//!
+//!	# typical cycle
+//!
+//! 	// connecting to an ethercat master in the linux kernel
+//! 	let mut master = Master::open(idx, MasterAccess::ReadWrite)?;
+//! 	master.reserve()?;
+//! 	// configure realtime transmissions
+//! 	let domain_idx = master.create_domain()?;
+//! 	let mut config = master.configure_slave(slave_addr, slave_id)?;
+//! 	// ... perform some configuration
+//! 	
+//! 	// switch to operation and realtime mode
+//! 	master.request_state(slave_pos, AlState::Op)?;
+//! 	master.activate()?;
+//! 	
+//! 	loop {
+//! 		// execute the transmission steps
+//! 		master.receive()?;
+//! 		master.domain(domain_idx).process()?;
+//! 		master.domain(domain_idx).queue()?;
+//! 		master.send()?;
+//! 		
+//! 		let raw_data = master.domain_data(domain_idx)?;
+//! 		// ... do something with the process data
+//! 	}
 
 
 use ethercat_sys as ec;
