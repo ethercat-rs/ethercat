@@ -105,26 +105,43 @@ pub struct ConfigInfo {
     // syncs[*], watchdog_*, dc_*
 }
 
+/// Slave information
 #[derive(Debug, Clone)]
 pub struct SlaveInfo {
+	/// Display name of the slave
     pub name: String,
+	/// Offset of the slave in the ring
     pub ring_pos: u16,
+    /// Vendor-ID and product code stored on the slave
     pub id: SlaveId,
+    /// Revision-Number stored on the slave
     pub rev: SlaveRev,
+    /// The slaves alias if not equal to 0
     pub alias: u16,
+    /// Used current in mA
     pub current_on_ebus: i16,
+    /// Current state of the slave
     pub al_state: AlState,
+    /// Error flag for that slave
     pub error_flag: u8,
+    /// Number of sync managers
     pub sync_count: u8,
+    /// Number of SDOs
     pub sdo_count: u16,
+    /// Port information, statically sized to the max number of ports allowed by this library
     pub ports: [SlavePortInfo; ec::EC_MAX_PORTS as usize],
 }
 
+/// EtherCAT slave port descriptor
 #[derive(Debug, Clone, Copy)]
 pub enum SlavePortType {
+	/// Port is not implemented
     NotImplemented,
+    /// Port is not configured
     NotConfigured,
+    /// Port is an E-Bus
     EBus,
+    /// Port is a MII
     MII,
 }
 
@@ -137,17 +154,26 @@ impl Default for SlavePortType {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SlavePortLink {
+	/// Link detected
     pub link_up: bool,
+    /// Loop closed
     pub loop_closed: bool,
+    /// Detected signal on RX port
     pub signal_detected: bool,
 }
 
+/// port information that can be retreived with a `SlaveInfo`
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SlavePortInfo {
+	/// Physical port type
     pub desc: SlavePortType,
+    /// Port link state
     pub link: SlavePortLink,
+    /// Receive time on DC transmission delay measurement
     pub receive_time: u32,
+    /// Ring position of next DC slave on that port
     pub next_slave: u16,
+    /// Delay [ns] to next DC slave
     pub delay_to_next_dc: u32,
 }
 
