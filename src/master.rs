@@ -502,6 +502,11 @@ impl Master {
         Ok(())
     }
 
+    pub fn sync_reference_clock_to(&mut self, sync_time: u64) -> Result<()> {
+        ioctl!(self, ec::ioctl::SYNC_REF_TO, &sync_time)?;
+        Ok(())
+    }
+
     pub fn sync_monitor_queue(&mut self) -> Result<()> {
         ioctl!(self, ec::ioctl::SYNC_MON_QUEUE)?;
         Ok(())
