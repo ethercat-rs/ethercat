@@ -13,6 +13,7 @@ ioctl-sys = "0.5.2"
 
 [build-dependencies]
 bindgen = "0.63.0"
+regex = "=1.9.6"
 
 [features]
 default = []

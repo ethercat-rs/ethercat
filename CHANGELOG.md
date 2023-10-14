@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1 (2023-10-14)
+
+- Bump MSRV to 1.63.0
+- Add `Master::sync_reference_clock_to` (PR #46)
+
 ## v0.3.0 (2023-04-05)
 
 - Bump MSRV to 1.58.1 and bindgen to 0.63 (PR #42)
