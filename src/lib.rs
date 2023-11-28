@@ -7,6 +7,8 @@ mod convert;
 mod master;
 mod types;
 
+pub mod util;
+
 pub use self::{
     master::{Domain, Master, MasterAccess, SlaveConfig},
     types::*,
