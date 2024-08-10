@@ -12,7 +12,7 @@ edition = "2018"
 ioctl-sys = "0.5.2"
 
 [build-dependencies]
-bindgen = "0.63.0"
+bindgen = "0.69.0"
 regex = "=1.9.6"
 # for 1.63 compatibility
 home = "=0.5.5"

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Update to stable-1.6 branch of master code (#48)
+- Update `pregenerated-bindings` to tag 1.6.1 of the master code
+
 ## v0.3.1 (2023-10-14)
 
 - Bump MSRV to 1.63.0
