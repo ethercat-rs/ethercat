@@ -1,9 +1,8 @@
-name: Build
+name: CI
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   pull_request:
 
 env:
@@ -13,34 +12,37 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
           components: rustfmt
-      - name: Check rust formatting (rustfmt)
-        run: cargo fmt --all -- --check
+      - run: cargo fmt --all -- --check
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - 1.63.0
+          - stable
+          - nightly
+    env:
+      ETHERCAT_PATH: ../ethercat-git
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy
 
-      - name: Install Mercurial
-        run: sudo apt-get install -y mercurial
       - name: Set up IgH repo
         run: |
-          hg clone http://hg.code.sf.net/p/etherlabmaster/code ethercat-hg
-          cd ethercat-hg
-          hg update stable-1.5
+          git clone https://gitlab.com/etherlab.org/ethercat ethercat-git
+          cd ethercat-git
+          git checkout stable-1.5
           ./bootstrap
           ./configure --disable-8139too
 
-      - name: Build
-        run: ETHERCAT_PATH=$(pwd)/ethercat-hg cargo build
+      - run: cargo clippy --all-targets
+      - run: cargo build --all-targets
