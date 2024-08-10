@@ -89,7 +89,7 @@ impl Master {
         let p = self
             .domain_data_placement(idx)
             .map_err(|_| Error::NoDomain)?;
-        let data = self.map.as_mut().ok_or_else(|| Error::NotActivated)?;
+        let data = self.map.as_mut().ok_or(Error::NotActivated)?;
         Ok(&mut data[p.offset..p.offset + p.size])
     }
 
@@ -119,7 +119,7 @@ impl Master {
                 .map_mut(&self.file)
                 .map(Some)?
         };
-        self.map.as_mut().ok_or_else(|| Error::NotActivated)?[0] = 0;
+        self.map.as_mut().ok_or(Error::NotActivated)?[0] = 0;
         Ok(())
     }
 
@@ -183,7 +183,7 @@ impl Master {
             app_time,
             ..
         } = data;
-        let first_device = devices.get(0).ok_or_else(|| Error::NoDevices)?;
+        let first_device = devices.first().ok_or(Error::NoDevices)?;
         let link_up = first_device.link_state != 0;
         let scan_busy = scan_busy != 0;
         Ok(MasterInfo {

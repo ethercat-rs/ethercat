@@ -31,7 +31,7 @@ fn main() {
             .expect("Couldn't write bindings!");
 
         // Generate the EC_IOCTL_ ioctl numbers -- bindgen can't handle them.
-        let code = fs::read_to_string(&format!("{}/master/ioctl.h", path))
+        let code = fs::read_to_string(format!("{}/master/ioctl.h", path))
             .expect("master/ioctl.h not found");
         let mut new = String::new();
         for line in code.split('\n') {

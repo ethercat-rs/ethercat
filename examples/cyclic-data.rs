@@ -64,17 +64,12 @@ pub fn main() -> Result<(), io::Error> {
     }
 }
 
+type SlaveMap = HashMap<SlavePos, HashMap<PdoEntryIndex, (BitLen, Offset)>>;
+
 pub fn init_master(
     esi: &EtherCatInfo,
     idx: u32,
-) -> Result<
-    (
-        Master,
-        DomainIndex,
-        HashMap<SlavePos, HashMap<PdoEntryIndex, (BitLen, Offset)>>,
-    ),
-    io::Error,
-> {
+) -> Result<(Master, DomainIndex, SlaveMap), io::Error> {
     let mut master = Master::open(idx, MasterAccess::ReadWrite)?;
     log::debug!("Reserve master");
     master.reserve()?;
@@ -111,7 +106,7 @@ pub fn init_master(
                             sub_idx: SubIdx::from(e.sub_index.unwrap_or(1) as u8),
                         },
                         bit_len: e.bit_len as u8,
-                        name: e.name.clone().unwrap_or(String::new()),
+                        name: e.name.clone().unwrap_or_default(),
                         pos: PdoEntryPos::from(i as u8),
                     })
                     .collect(),
@@ -133,7 +128,7 @@ pub fn init_master(
                             sub_idx: SubIdx::from(e.sub_index.unwrap_or(1) as u8),
                         },
                         bit_len: e.bit_len as u8,
-                        name: e.name.clone().unwrap_or(String::new()),
+                        name: e.name.clone().unwrap_or_default(),
                         pos: PdoEntryPos::from(i as u8),
                     })
                     .collect(),
