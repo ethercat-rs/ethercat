@@ -40,7 +40,7 @@ jobs:
         run: |
           git clone https://gitlab.com/etherlab.org/ethercat ethercat-git
           cd ethercat-git
-          git checkout stable-1.5
+          git checkout stable-1.6
           ./bootstrap
           ./configure --disable-8139too
 

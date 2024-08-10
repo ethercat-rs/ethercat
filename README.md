@@ -24,11 +24,11 @@ environment variable `ETHERCAT_PATH` to the location of a checkout of the IgH
 Etherlab repository, *after running `configure` there*.
 
 The IgH repository is located at <https://gitlab.com/etherlab.org/ethercat>.
-Please switch to the ``stable-1.5`` branch in the checkout.
+Please switch to the ``stable-1.6`` branch in the checkout.
 
-Bindings have been pregenerated for revision `c022ddbcf254` - if you activate
-the feature `pregenerated-bindings`, you don't need the master code to build,
-but the kernel modules must match that revision.
+Bindings have been pregenerated for the tag `1.6.1` - if you activate the
+feature `pregenerated-bindings`, you don't need the master code to build, but
+the kernel modules must match that revision.
 
 The minimum tested Rust version is 1.63.0.
 
