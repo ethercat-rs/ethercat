@@ -22,7 +22,7 @@ num-traits = "0.2"
 thiserror = "1.0"
 
 [dev-dependencies]
-ethercat-esi = "0.1"
+ethercat-esi = "0.2"
 env_logger = "0.8"
 
 [features]

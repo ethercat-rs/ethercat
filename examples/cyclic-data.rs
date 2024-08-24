@@ -1,7 +1,6 @@
 use ethercat::{
-    AlState, DomainIdx as DomainIndex, Idx, Master, MasterAccess, Offset, PdoCfg, PdoEntryIdx,
-    PdoEntryIdx as PdoEntryIndex, PdoEntryInfo, PdoEntryPos, PdoIdx, SlaveAddr, SlaveId, SlavePos,
-    SmCfg, SubIdx,
+    AlState, DomainIdx as DomainIndex, Master, MasterAccess, Offset, PdoCfg, PdoEntryIdx,
+    PdoEntryInfo, PdoEntryPos, SlaveAddr, SlaveId, SlavePos, SmCfg,
 };
 use ethercat_esi::EtherCatInfo;
 use std::{
@@ -64,7 +63,7 @@ pub fn main() -> Result<(), io::Error> {
     }
 }
 
-type SlaveMap = HashMap<SlavePos, HashMap<PdoEntryIndex, (BitLen, Offset)>>;
+type SlaveMap = HashMap<SlavePos, HashMap<PdoEntryIdx, (BitLen, Offset)>>;
 
 pub fn init_master(
     esi: &EtherCatInfo,
@@ -75,7 +74,7 @@ pub fn init_master(
     master.reserve()?;
     log::debug!("Create domain");
     let domain_idx = master.create_domain()?;
-    let mut offsets: HashMap<SlavePos, HashMap<PdoEntryIndex, (u8, Offset)>> = HashMap::new();
+    let mut offsets: HashMap<SlavePos, HashMap<PdoEntryIdx, (u8, Offset)>> = HashMap::new();
 
     for (dev_nr, dev) in esi.description.devices.iter().enumerate() {
         let slave_pos = SlavePos::from(dev_nr as u16);
@@ -89,22 +88,19 @@ pub fn init_master(
             product_code: dev.product_code,
         };
         let mut config = master.configure_slave(slave_addr, slave_id)?;
-        let mut entry_offsets: HashMap<PdoEntryIndex, (u8, Offset)> = HashMap::new();
+        let mut entry_offsets: HashMap<PdoEntryIdx, (u8, Offset)> = HashMap::new();
 
         let rx_pdos: Vec<PdoCfg> = dev
             .rx_pdo
             .iter()
             .map(|pdo| PdoCfg {
-                idx: PdoIdx::from(pdo.index),
+                idx: pdo.idx,
                 entries: pdo
                     .entries
                     .iter()
                     .enumerate()
                     .map(|(i, e)| PdoEntryInfo {
-                        entry_idx: PdoEntryIdx {
-                            idx: Idx::from(e.index),
-                            sub_idx: SubIdx::from(e.sub_index.unwrap_or(1) as u8),
-                        },
+                        entry_idx: e.entry_idx,
                         bit_len: e.bit_len as u8,
                         name: e.name.clone().unwrap_or_default(),
                         pos: PdoEntryPos::from(i as u8),
@@ -117,16 +113,13 @@ pub fn init_master(
             .tx_pdo
             .iter()
             .map(|pdo| PdoCfg {
-                idx: PdoIdx::from(pdo.index),
+                idx: pdo.idx,
                 entries: pdo
                     .entries
                     .iter()
                     .enumerate()
                     .map(|(i, e)| PdoEntryInfo {
-                        entry_idx: PdoEntryIdx {
-                            idx: Idx::from(e.index),
-                            sub_idx: SubIdx::from(e.sub_index.unwrap_or(1) as u8),
-                        },
+                        entry_idx: e.entry_idx,
                         bit_len: e.bit_len as u8,
                         name: e.name.clone().unwrap_or_default(),
                         pos: PdoEntryPos::from(i as u8),
