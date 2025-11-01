@@ -227,6 +227,10 @@ impl Master {
     //     .al_states: Sum of the AL states of all slaves.
     //     .link_up: True if AT LEAST ONE EtherCAT link is up
     // 
+    // If you need to query the state of a specific device (i.e. primary or backup device),
+    // use `master.link_state()` instead.
+    // If you don't have a backup device, both functions return the same result.
+    // 
     // # Returns
     // * `Result<MasterState>` - A result containing the current state of the EtherCAT master.
     pub fn state(&self) -> Result<MasterState> {
@@ -239,6 +243,23 @@ impl Master {
         })
     }
 
+    /// Query the state of a specific EtherCAT master link.
+    /// A "link" is either the primary EtherCAT interface or a backup interface.
+    /// The resulting MasterState structure contains the following information:
+    ///    .slaves_responding: Number of slaves currently responding to the master on this link (=device)
+    ///    .al_states: Sum of the AL states of all slaves on this link (=device)
+    ///    .link_up: True if the Ethernet link is up for this link (=device)
+    /// 
+    /// If you don't care about the state of specific interfaces,
+    /// (such as if you don't have a backup device configured),
+    /// use `Master::state()` instead.
+    /// 
+    /// # Arguments
+    ///
+    /// * `dev_idx` - 0 for the primary device, 1 for the first backup device, etc.
+    /// 
+    /// # Returns
+    /// * `Result<MasterState>` - A result containing the state of the specified link.
     pub fn link_state(&self, dev_idx: u32) -> Result<MasterState> {
         let mut state = ec::ec_master_link_state_t::default();
         let mut data = ec::ec_ioctl_link_state_t {
