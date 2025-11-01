@@ -604,6 +604,11 @@ impl Master {
         Ok(())
     }
 
+    /// When operating in distributed clock mode, set the application time
+    /// that will be used as reference for the next cycle.
+    /// 
+    /// The time is defined as nanoseconds since 2000-01-01 00:00:00 UTC.
+    /// Typically, you would get this time from a high-resolution system clock.
     pub fn set_application_time(&mut self, app_time: u64) -> Result<()> {
         ioctl!(self, ec::ioctl::APP_TIME, &app_time)?;
         Ok(())
