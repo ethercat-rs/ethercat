@@ -123,6 +123,20 @@ impl Master {
         Ok((ioctl!(self, ec::ioctl::CREATE_DOMAIN)? as usize).into())
     }
 
+    /// Create a `Domain` object from a given domain index
+    /// This does NOT create a new domain in the master, use `master.create_domain()` for that.
+    ///
+    /// You MUST pass a valid domain index previously created with `master.create_domain()`.
+    /// If the domain index is invalid, this function will still return a `Domain` object,
+    /// but subsequent calls with said `Domain` object will fail.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index of the domain, i.e. the value returned by `master.create_domain()`.
+    ///
+    /// # Returns
+    ///
+    /// * `Domain` - A `Domain` object representing the specified domain index.
     pub const fn domain(&self, idx: DomainIdx) -> Domain {
         Domain::new(idx, self)
     }
