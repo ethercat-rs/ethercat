@@ -91,6 +91,14 @@ impl Master {
         Ok(module_info.master_count as usize)
     }
 
+    /// Reserve an EtherCAT master for realtime use.
+    /// You need to call this before using any domain functions or PDOs
+    /// 
+    /// This is the equivalent of `ecrt_master_reserve()` in the C API.
+    /// 
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A result indicating success or failure.
     pub fn reserve(&self) -> Result<()> {
         log::debug!("Reserve EtherCAT Master");
         ioctl!(self, ec::ioctl::REQUEST)?;
