@@ -620,11 +620,27 @@ impl Master {
     /// 
     /// You MUST call `master.set_application_time()` before calling this function,
     /// to set the desired application time for the next cycle.
+    /// Typically, you would call `master.set_application_time()`
+    /// EVERY time before calling `master.sync_reference_clock()`.
+    /// 
+    /// See the [Beckhoff documentation](https://infosys.beckhoff.com/english.php?content=../content/1033/ethercatsystem/2469118347.html&id=)
+    /// on EtherCAT distributed clocks for more details on how this process works.
+    /// 
+    /// See also `master.sync_slave_clocks()`.
     pub fn sync_reference_clock(&mut self) -> Result<()> {
         ioctl!(self, ec::ioctl::SYNC_REF)?;
         Ok(())
     }
 
+    /// Puts a DC clock drift compensation EtherCAT datagram into
+    /// the send queue. This datagram will be sent in the next
+    /// `master.send()` call.
+    /// 
+    /// A logical prerequisitie for this function is that you have already called
+    /// `master.sync_reference_clock()`.
+    /// 
+    /// See the [Beckhoff documentation](https://infosys.beckhoff.com/english.php?content=../content/1033/ethercatsystem/2469118347.html&id=)
+    /// on EtherCAT distributed clocks for more details on how this process works.
     pub fn sync_slave_clocks(&mut self) -> Result<()> {
         ioctl!(self, ec::ioctl::SYNC_SLAVES)?;
         Ok(())
