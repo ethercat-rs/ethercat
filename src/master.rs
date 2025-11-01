@@ -614,6 +614,12 @@ impl Master {
         Ok(())
     }
 
+    /// Puts a DC reference clock drift compensation EtherCAT datagram into
+    /// the send queue. This datagram will be sent in the next
+    /// `master.send()` call.
+    /// 
+    /// You MUST call `master.set_application_time()` before calling this function,
+    /// to set the desired application time for the next cycle.
     pub fn sync_reference_clock(&mut self) -> Result<()> {
         ioctl!(self, ec::ioctl::SYNC_REF)?;
         Ok(())
