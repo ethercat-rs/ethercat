@@ -41,6 +41,20 @@ pub enum MasterAccess {
 }
 
 impl Master {
+    /// Open an EtherCAT master device, that is `/dev/EtherCAT{idx}`,
+    /// and check if the version of the kernel module matches the expected version.
+    /// 
+    /// This call is the equivalent of `ecrt_open_master(idx)` in the C API.
+    /// It does NOT reserve the master instance. Use `reserve()` for that.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index of the master to open. The first master is `idx = 0`, the second `idx = 1`, etc.
+    /// * `access` - The access level for the master (MasterAccess::ReadOnly or MasterAccess::ReadWrite).
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A result containing the master instance if successful, or an error.
     pub fn open(idx: MasterIdx, access: MasterAccess) -> Result<Self> {
         let devpath = format!("/dev/EtherCAT{}", idx);
         log::debug!("Open EtherCAT Master {}", devpath);
