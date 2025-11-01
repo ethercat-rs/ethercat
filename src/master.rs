@@ -581,6 +581,13 @@ impl Master {
         })
     }
 
+    /// Request that a specific slave (identified by slave_pos) changes
+    /// its state to the specified AL state.
+    /// For example, request the slave to go to Operational state.
+    /// 
+    /// If you want to QUERY the current state of a slave, use `get_slave_info()` instead.
+    /// 
+    /// This is the equivalent of the C API function `ec_slave_request_state()`.
     pub fn request_state(&mut self, slave_pos: SlavePos, state: AlState) -> Result<()> {
         let mut data = ec::ec_ioctl_slave_state_t::default();
         data.slave_position = u16::from(slave_pos);
