@@ -164,6 +164,22 @@ impl Master {
         })
     }
 
+    /// Activate a previously reserved EtherCAT master.
+    /// You MUST reserve the master using `master.reserve()` before calling this function.
+    /// You MUST create at least one domain using `master.create_domain()` before calling this function.
+    ///
+    /// This is the equivalent of `ecrt_master_activate()` in the C API.
+    /// 
+    /// Calling this function indicates to the kernel module that the master configuration
+    /// phase is finished and the realtime operation can begin.
+    /// 
+    /// After calling this function, you are responsible for cyclically calling `master.send()` and `master.receive()`,
+    /// with the appropriate timing for your application.
+    /// 
+    /// # Returns
+    /// 
+    /// * `Result<()>` - A result indicating success or failure.
+    /// 
     pub fn activate(&mut self) -> Result<()> {
         log::debug!("Activate EtherCAT Master");
         let mut data = ec::ec_ioctl_master_activate_t::default();
