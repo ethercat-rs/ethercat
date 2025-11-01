@@ -207,6 +207,11 @@ impl Master {
         ioctl!(self, ec::ioctl::SET_SEND_INTERVAL, &interval_us).map(|_| ())
     }
 
+    /// Send queued data frames to the EtherCAT slaves.
+    /// You MUST call this function cyclically, after
+    /// `master.activate()` has been called.
+    /// 
+    /// This is the similar of `ecrt_master_send()` in the C API.
     pub fn send(&mut self) -> Result<usize> {
         let mut sent = 0;
         ioctl!(self, ec::ioctl::SEND, &mut sent as *mut _ as c_ulong)?;
