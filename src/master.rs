@@ -43,7 +43,7 @@ pub enum MasterAccess {
 impl Master {
     /// Open an EtherCAT master device, that is `/dev/EtherCAT{idx}`,
     /// and check if the version of the kernel module matches the expected version.
-    /// 
+    ///
     /// This call is the equivalent of `ecrt_open_master(idx)` in the C API.
     /// It does NOT reserve the master instance. Use `reserve()` for that.
     ///
@@ -80,10 +80,10 @@ impl Master {
 
     /// Determine how many EtherCAT masters are available in the system.
     /// For example, if only /dev/EtherCAT0 exists, this returns 1.
-    /// 
+    ///
     /// # Returns
     ///
-    /// * `Result<Self>` - A result containing the number of available masters if successful, or an error.
+    /// * `Result<usize>` - A result containing the number of available masters if successful, or an error.
     pub fn master_count() -> Result<usize> {
         let master = Self::open(0, MasterAccess::ReadOnly)?;
         let mut module_info = ec::ec_ioctl_module_t::default();
@@ -93,18 +93,32 @@ impl Master {
 
     /// Reserve an EtherCAT master for realtime use.
     /// You need to call this before using any domain functions or PDOs
-    /// 
+    ///
     /// This is the equivalent of `ecrt_master_reserve()` in the C API.
-    /// 
+    ///
     /// # Returns
     ///
-    /// * `Result<Self>` - A result indicating success or failure.
+    /// * `Result<()>` - A result indicating success or failure.
     pub fn reserve(&self) -> Result<()> {
         log::debug!("Reserve EtherCAT Master");
         ioctl!(self, ec::ioctl::REQUEST)?;
         Ok(())
     }
 
+    /// Create a new process data domain for the given master.
+    /// You must `reserve()` the master before calling this function.
+    /// You must create at least one domain before calling `ecrt_master_activate()`.
+    ///
+    /// The resulting domain index can be using in Master::domain() to create a `Domain` instance.
+    ///
+    /// Refer to the [EtherLab EtherCAT master documentation](https://docs.etherlab.org/ethercat/1.6/pdf/ethercat_doc.pdf)
+    /// for more information on how domains are intended to be used in an application.
+    ///
+    /// This is the equivalent of `ecrt_master_create_domain()` in the C API.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A result with the domain index if successful, or an error.
     pub fn create_domain(&self) -> Result<DomainIdx> {
         Ok((ioctl!(self, ec::ioctl::CREATE_DOMAIN)? as usize).into())
     }
