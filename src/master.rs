@@ -78,6 +78,12 @@ impl Master {
         Ok(master)
     }
 
+    /// Determine how many EtherCAT masters are available in the system.
+    /// For example, if only /dev/EtherCAT0 exists, this returns 1.
+    /// 
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A result containing the number of available masters if successful, or an error.
     pub fn master_count() -> Result<usize> {
         let master = Self::open(0, MasterAccess::ReadOnly)?;
         let mut module_info = ec::ec_ioctl_module_t::default();
