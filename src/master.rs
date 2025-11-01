@@ -221,6 +221,14 @@ impl Master {
         ioctl!(self, ec::ioctl::RESET).map(|_| ())
     }
 
+    // Query the current state of the EtherCAT master.
+    // The resulting structure contains the following information:
+    //     .slaves_responding: Number of slaves currently responding to the master.
+    //     .al_states: Sum of the AL states of all slaves.
+    //     .link_up: True if AT LEAST ONE EtherCAT link is up
+    // 
+    // # Returns
+    // * `Result<MasterState>` - A result containing the current state of the EtherCAT master.
     pub fn state(&self) -> Result<MasterState> {
         let mut data = ec::ec_master_state_t::default();
         ioctl!(self, ec::ioctl::MASTER_STATE, &mut data)?;
