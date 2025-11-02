@@ -483,6 +483,17 @@ impl Master {
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
     }
 
+    // Make a slave upload the value of a given SDO to the master.
+    // Essentially, this allows reading a SDO value from a slave.
+    // This function may be called before activating the master.
+    //
+    // Calling this is equivalent to the C API function `ecrt_master_sdo_upload()`.
+    //
+    // # Arguments
+    // * `position` - The position of the slave in the EtherCAT ring.
+    // * `sdo_idx` - The index and subindex of the SDO to upload.
+    // * `complete_access` - Whether to use complete access for the SDO upload (only used in Synapticon branch)
+    // * `target` - A mutable reference to the buffer where the uploaded data will be stored. This buffer must be large enough to hold the SDO data.
     pub fn sdo_upload<'t>(
         &self,
         position: SlavePos,
