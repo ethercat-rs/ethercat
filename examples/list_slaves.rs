@@ -22,13 +22,12 @@ pub fn main() -> Result<(), io::Error> {
                 found += 1;
             }
             Err(_) => {
-                // ignore errors for positions without a slave
+                println!("Slave pos {i}: <no slave>");
             }
         }
     }
 
     println!("Discovered {found} slaves (checked positions 0..31)");
 
-    // keep program alive if user wants to extend it interactively
     Ok(())
 }
