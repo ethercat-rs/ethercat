@@ -6,7 +6,6 @@ use ethercat::{Master, SlavePos};
 use std::{io};
 
 pub fn main() -> Result<(), io::Error> {
-    // initialize logging
     env_logger::init();
 
     // open the first available master interface
