@@ -456,6 +456,9 @@ impl Master {
     // Download a value to a given SDO on a slave.
     // Essentially, this allows writing a SDO value to a slave.
     //
+    // This is a *blocking* call. It may not be used in realtime contexts,
+    // since it will block the master until the SDO download is complete.
+    //
     // This is equivalent to the C API function `ecrt_master_sdo_download()`.
     //
     // # Arguments
@@ -494,6 +497,9 @@ impl Master {
     // Make a slave upload the value of a given SDO to the master.
     // Essentially, this allows reading a SDO value from a slave.
     // This function may be called before activating the master.
+    //
+    // This is a *blocking* call. It may not be used in realtime contexts,
+    // since it will block the master until the SDO upload is complete.
     //
     // Calling this is equivalent to the C API function `ecrt_master_sdo_upload()`.
     //
