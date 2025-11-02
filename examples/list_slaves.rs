@@ -28,7 +28,7 @@ pub fn main() -> Result<(), io::Error> {
         }
     }
 
-    println!("Discovered {} slaves (checked positions 0..31)", found);
+    println!("Discovered {found} slaves (checked positions 0..31)");
 
     // keep program alive if user wants to extend it interactively
     Ok(())
