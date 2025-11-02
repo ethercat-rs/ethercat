@@ -453,8 +453,16 @@ impl Master {
         })
     }
 
-    // Queue a download of the given SDO entry from the specified slave.
+    // Download a value to a given SDO on a slave.
+    // Essentially, this allows writing a SDO value to a slave.
+    //
     // This is equivalent to the C API function `ecrt_master_sdo_download()`.
+    //
+    // # Arguments
+    // * `position` - The position of the slave in the EtherCAT ring (0 = first slave)
+    // * `sdo_idx` - The index and subindex of the SDO to download.
+    // * `complete_access` - Whether to use complete access for the SDO download (only used in Synapticon branch)
+    // * `data` - A data buffer containing the value to download to the SDO. Must implement `data.data_ptr()`.
     pub fn sdo_download<T>(
         &mut self,
         position: SlavePos,
@@ -490,7 +498,7 @@ impl Master {
     // Calling this is equivalent to the C API function `ecrt_master_sdo_upload()`.
     //
     // # Arguments
-    // * `position` - The position of the slave in the EtherCAT ring.
+    // * `position` - The position of the slave in the EtherCAT ring (0 = first slave)
     // * `sdo_idx` - The index and subindex of the SDO to upload.
     // * `complete_access` - Whether to use complete access for the SDO upload (only used in Synapticon branch)
     // * `target` - A mutable reference to the buffer where the uploaded data will be stored. This buffer must be large enough to hold the SDO data.
