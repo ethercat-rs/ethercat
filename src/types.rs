@@ -63,6 +63,11 @@ pub struct SlaveRev {
 
 /// An EtherCAT slave, which is specified either by absolute position in the
 /// ring or by offset from a given alias.
+/// 
+/// Example for slave address by position
+/// ```rust
+/// let myslave_addr = SlaveAddr::ByPos(2); // third slave
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub enum SlaveAddr {
     ByPos(u16),

@@ -41,6 +41,20 @@ pub enum MasterAccess {
 }
 
 impl Master {
+    /// Open an EtherCAT master device, that is `/dev/EtherCAT{idx}`,
+    /// and check if the version of the kernel module matches the expected version.
+    ///
+    /// This call is the equivalent of `ecrt_open_master(idx)` in the C API.
+    /// It does NOT reserve the master instance. Use `reserve()` for that.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index of the master to open. The first master is `idx = 0`, the second `idx = 1`, etc.
+    /// * `access` - The access level for the master (MasterAccess::ReadOnly or MasterAccess::ReadWrite).
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A result containing the master instance if successful, or an error.
     pub fn open(idx: MasterIdx, access: MasterAccess) -> Result<Self> {
         let devpath = format!("/dev/EtherCAT{}", idx);
         log::debug!("Open EtherCAT Master {}", devpath);
@@ -64,6 +78,12 @@ impl Master {
         Ok(master)
     }
 
+    /// Determine how many EtherCAT masters are available in the system.
+    /// For example, if only /dev/EtherCAT0 exists, this returns 1.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<usize>` - A result containing the number of available masters if successful, or an error.
     pub fn master_count() -> Result<usize> {
         let master = Self::open(0, MasterAccess::ReadOnly)?;
         let mut module_info = ec::ec_ioctl_module_t::default();
@@ -71,16 +91,52 @@ impl Master {
         Ok(module_info.master_count as usize)
     }
 
+    /// Reserve an EtherCAT master for realtime use.
+    /// You need to call this before using any domain functions or PDOs
+    ///
+    /// This is the equivalent of `ecrt_master_reserve()` in the C API.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - A result indicating success or failure.
     pub fn reserve(&self) -> Result<()> {
         log::debug!("Reserve EtherCAT Master");
         ioctl!(self, ec::ioctl::REQUEST)?;
         Ok(())
     }
 
+    /// Create a new process data domain for the given master.
+    /// You must `reserve()` the master before calling this function.
+    /// You must create at least one domain before calling `ecrt_master_activate()`.
+    ///
+    /// The resulting domain index can be using in Master::domain() to create a `Domain` instance.
+    ///
+    /// Refer to the [EtherLab EtherCAT master documentation](https://docs.etherlab.org/ethercat/1.6/pdf/ethercat_doc.pdf)
+    /// for more information on how domains are intended to be used in an application.
+    ///
+    /// This is the equivalent of `ecrt_master_create_domain()` in the C API.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A result with the domain index if successful, or an error.
     pub fn create_domain(&self) -> Result<DomainIdx> {
         Ok((ioctl!(self, ec::ioctl::CREATE_DOMAIN)? as usize).into())
     }
 
+    /// Create a `Domain` object from a given domain index
+    /// This does NOT create a new domain in the master, use `master.create_domain()` for that.
+    ///
+    /// You MUST pass a valid domain index previously created with `master.create_domain()`.
+    /// If the domain index is invalid, this function will still return a `Domain` object,
+    /// but subsequent calls with said `Domain` object will fail.
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - The index of the domain, i.e. the value returned by `master.create_domain()`.
+    ///
+    /// # Returns
+    ///
+    /// * `Domain` - A `Domain` object representing the specified domain index.
     pub const fn domain(&self, idx: DomainIdx) -> Domain {
         Domain::new(idx, self)
     }
@@ -108,6 +164,22 @@ impl Master {
         })
     }
 
+    /// Activate a previously reserved EtherCAT master.
+    /// You MUST reserve the master using `master.reserve()` before calling this function.
+    /// You MUST create at least one domain using `master.create_domain()` before calling this function.
+    ///
+    /// This is the equivalent of `ecrt_master_activate()` in the C API.
+    ///
+    /// Calling this function indicates to the kernel module that the master configuration
+    /// phase is finished and the realtime operation can begin.
+    ///
+    /// After calling this function, you are responsible for cyclically calling `master.send()` and `master.receive()`,
+    /// with the appropriate timing for your application.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - A result indicating success or failure.
+    ///
     pub fn activate(&mut self) -> Result<()> {
         log::debug!("Activate EtherCAT Master");
         let mut data = ec::ec_ioctl_master_activate_t::default();
@@ -135,6 +207,11 @@ impl Master {
         ioctl!(self, ec::ioctl::SET_SEND_INTERVAL, &interval_us).map(|_| ())
     }
 
+    /// Send queued data frames to the EtherCAT slaves.
+    /// You MUST call this function cyclically, after
+    /// `master.activate()` has been called.
+    ///
+    /// This is the similar of `ecrt_master_send()` in the C API.
     pub fn send(&mut self) -> Result<usize> {
         let mut sent = 0;
         ioctl!(self, ec::ioctl::SEND, &mut sent as *mut _ as c_ulong)?;
@@ -149,6 +226,20 @@ impl Master {
         ioctl!(self, ec::ioctl::RESET).map(|_| ())
     }
 
+    // Query the current state of the EtherCAT master.
+    // The resulting structure contains the following information:
+    //     .slaves_responding: Number of slaves currently responding to the master.
+    //     .al_states: Sum of the AL states of all slaves.
+    //     .link_up: True if AT LEAST ONE EtherCAT link is up
+    //
+    // This function is the equivalent of `ecrt_master_state()` in the C API.
+    //
+    // If you need to query the state of a specific device (i.e. primary or backup device),
+    // use `master.link_state()` instead.
+    // If you don't have a backup device, both functions return the same result.
+    //
+    // # Returns
+    // * `Result<MasterState>` - A result containing the current state of the EtherCAT master.
     pub fn state(&self) -> Result<MasterState> {
         let mut data = ec::ec_master_state_t::default();
         ioctl!(self, ec::ioctl::MASTER_STATE, &mut data)?;
@@ -159,6 +250,25 @@ impl Master {
         })
     }
 
+    /// Query the state of a specific EtherCAT master link.
+    /// A "link" is either the primary EtherCAT interface or a backup interface.
+    /// The resulting MasterState structure contains the following information:
+    ///    .slaves_responding: Number of slaves currently responding to the master on this link (=device)
+    ///    .al_states: Sum of the AL states of all slaves on this link (=device)
+    ///    .link_up: True if the Ethernet link is up for this link (=device)
+    ///
+    /// This function is the equivalent of `ecrt_master_link_state()` in the C API.
+    ///
+    /// If you don't care about the state of specific interfaces,
+    /// (such as if you don't have a backup device configured),
+    /// use `Master::state()` instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `dev_idx` - 0 for the primary device, 1 for the first backup device, etc.
+    ///
+    /// # Returns
+    /// * `Result<MasterState>` - A result containing the state of the specified link.
     pub fn link_state(&self, dev_idx: u32) -> Result<MasterState> {
         let mut state = ec::ec_master_link_state_t::default();
         let mut data = ec::ec_ioctl_link_state_t {
@@ -343,6 +453,19 @@ impl Master {
         })
     }
 
+    // Download a value to a given SDO on a slave.
+    // Essentially, this allows writing a SDO value to a slave.
+    //
+    // This is a *blocking* call. It may not be used in realtime contexts,
+    // since it will block the master until the SDO download is complete.
+    //
+    // This is equivalent to the C API function `ecrt_master_sdo_download()`.
+    //
+    // # Arguments
+    // * `position` - The position of the slave in the EtherCAT ring (0 = first slave)
+    // * `sdo_idx` - The index and subindex of the SDO to download.
+    // * `complete_access` - Whether to use complete access for the SDO download (only used in Synapticon branch)
+    // * `data` - A data buffer containing the value to download to the SDO. Must implement `data.data_ptr()`.
     pub fn sdo_download<T>(
         &mut self,
         position: SlavePos,
@@ -371,6 +494,20 @@ impl Master {
         ioctl!(self, ec::ioctl::SLAVE_SDO_DOWNLOAD, &mut data).map(|_| ())
     }
 
+    // Make a slave upload the value of a given SDO to the master.
+    // Essentially, this allows reading a SDO value from a slave.
+    // This function may be called before activating the master.
+    //
+    // This is a *blocking* call. It may not be used in realtime contexts,
+    // since it will block the master until the SDO upload is complete.
+    //
+    // Calling this is equivalent to the C API function `ecrt_master_sdo_upload()`.
+    //
+    // # Arguments
+    // * `position` - The position of the slave in the EtherCAT ring (0 = first slave)
+    // * `sdo_idx` - The index and subindex of the SDO to upload.
+    // * `complete_access` - Whether to use complete access for the SDO upload (only used in Synapticon branch)
+    // * `target` - A mutable reference to the buffer where the uploaded data will be stored. This buffer must be large enough to hold the SDO data.
     pub fn sdo_upload<'t>(
         &self,
         position: SlavePos,
@@ -471,6 +608,13 @@ impl Master {
         })
     }
 
+    /// Request that a specific slave (identified by slave_pos) changes
+    /// its state to the specified AL state.
+    /// For example, request the slave to go to Operational state.
+    ///
+    /// If you want to QUERY the current state of a slave, use `get_slave_info()` instead.
+    ///
+    /// This is the equivalent of the C API function `ec_slave_request_state()`.
     pub fn request_state(&mut self, slave_pos: SlavePos, state: AlState) -> Result<()> {
         let mut data = ec::ec_ioctl_slave_state_t::default();
         data.slave_position = u16::from(slave_pos);
@@ -487,16 +631,43 @@ impl Master {
         Ok(())
     }
 
+    /// When operating in distributed clock mode, set the application time
+    /// that will be used as reference for the next cycle.
+    ///
+    /// The time is defined as nanoseconds since 2000-01-01 00:00:00 UTC.
+    /// Typically, you would get this time from a high-resolution system clock.
     pub fn set_application_time(&mut self, app_time: u64) -> Result<()> {
         ioctl!(self, ec::ioctl::APP_TIME, &app_time)?;
         Ok(())
     }
 
+    /// Puts a DC reference clock drift compensation EtherCAT datagram into
+    /// the send queue. This datagram will be sent in the next
+    /// `master.send()` call.
+    ///
+    /// You MUST call `master.set_application_time()` before calling this function,
+    /// to set the desired application time for the next cycle.
+    /// Typically, you would call `master.set_application_time()`
+    /// EVERY time before calling `master.sync_reference_clock()`.
+    ///
+    /// See the [Beckhoff documentation](https://infosys.beckhoff.com/english.php?content=../content/1033/ethercatsystem/2469118347.html&id=)
+    /// on EtherCAT distributed clocks for more details on how this process works.
+    ///
+    /// See also `master.sync_slave_clocks()`.
     pub fn sync_reference_clock(&mut self) -> Result<()> {
         ioctl!(self, ec::ioctl::SYNC_REF)?;
         Ok(())
     }
 
+    /// Puts a DC clock drift compensation EtherCAT datagram into
+    /// the send queue. This datagram will be sent in the next
+    /// `master.send()` call.
+    ///
+    /// A logical prerequisitie for this function is that you have already called
+    /// `master.sync_reference_clock()`.
+    ///
+    /// See the [Beckhoff documentation](https://infosys.beckhoff.com/english.php?content=../content/1033/ethercatsystem/2469118347.html&id=)
+    /// on EtherCAT distributed clocks for more details on how this process works.
     pub fn sync_slave_clocks(&mut self) -> Result<()> {
         ioctl!(self, ec::ioctl::SYNC_SLAVES)?;
         Ok(())
@@ -710,6 +881,16 @@ impl<'m> SlaveConfig<'m> {
         })
     }
 
+    /// Configure this slave's Distributed Clocks (DC) settings
+    ///
+    /// # Arguments
+    /// * `assign_activate` - DC assign and activate settings.
+    ///   This is a device-specific parameter, which can be found in the
+    ///   device's ESI XML file. If you can't find it, 0x0300 is a common choice.
+    /// * `sync0_cycle_time` - Cycle time for Sync0 in nanoseconds, i.e. how often a SYNC0 signal is sent.
+    /// * `sync0_shift_time` - Shift time for Sync0 in nanoseconds
+    /// * `sync1_cycle_time` - Cycle time for Sync1 in nanoseconds, see above
+    /// * `sync1_shift_time` - Shift time for Sync1 in nanoseconds
     pub fn config_dc(
         &mut self,
         assign_activate: u16,
