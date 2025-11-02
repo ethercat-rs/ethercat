@@ -3,7 +3,7 @@
 //! Opens master 0 (read-only), queries slave info for positions 0..31 and
 //! prints discovered slaves.
 use ethercat::{Master, SlavePos};
-use std::{io};
+use std::io;
 
 pub fn main() -> Result<(), io::Error> {
     env_logger::init();
