@@ -18,7 +18,7 @@ pub fn main() -> Result<(), io::Error> {
         let pos = SlavePos::from(i);
         match master.get_slave_info(pos) {
             Ok(info) => {
-                println!("Slave pos {}: {:?}", i, info);
+                println!("Slave pos {i}: {info:?}");
                 found += 1;
             }
             Err(_) => {
@@ -27,7 +27,7 @@ pub fn main() -> Result<(), io::Error> {
         }
     }
 
-    println!("Discovered {} slaves (checked positions 0..31)", found);
+    println!("Discovered {found} slaves (checked positions 0..31)");
 
     // keep program alive if user wants to extend it interactively
     Ok(())
