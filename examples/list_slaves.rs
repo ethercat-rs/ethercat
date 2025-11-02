@@ -19,7 +19,7 @@ pub fn main() -> Result<(), io::Error> {
         let pos = SlavePos::from(i);
         match master.get_slave_info(pos) {
             Ok(info) => {
-                println!("Slave pos {}: {:?}", i, info);
+                println!("Slave pos {i}: {info:?}");
                 found += 1;
             }
             Err(_) => {
