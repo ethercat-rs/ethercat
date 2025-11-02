@@ -453,6 +453,8 @@ impl Master {
         })
     }
 
+    // Queue a download of the given SDO entry from the specified slave.
+    // This is equivalent to the C API function `ecrt_master_sdo_download()`.
     pub fn sdo_download<T>(
         &mut self,
         position: SlavePos,
