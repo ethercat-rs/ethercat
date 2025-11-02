@@ -8,10 +8,12 @@ use std::{io};
 pub fn main() -> Result<(), io::Error> {
     env_logger::init();
 
-    // open the first available master interface
+    // Open /dev/EtherCAT0 (the first EtherCAT master) in read-only mode
+    // Prerequisites: You must configure the Etherlab EtherCAT master using `/etc/ethercat.conf`,
+    // and have the master running (e.g. via `sudo systemctl start ethercat`).
     let master = Master::open(0, ethercat::MasterAccess::ReadOnly)?;
 
-    log::info!("Master opened. Attempting to list slaves (positions 0..31)...");
+    log::info!("Master 0 opened. Attempting to list slaves (positions 0..31)...");
 
     let mut found = 0u32;
     for i in 0u16..=31 {
