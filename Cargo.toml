@@ -10,6 +10,7 @@ repository = "https://github.com/ethercat-rs/ethercat"
 readme = "README.md"
 license = "MIT/Apache-2.0"
 edition = "2018"
+rust-version = "1.71"
 
 [dependencies]
 derive-new = "0.5"

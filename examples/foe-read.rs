@@ -6,14 +6,13 @@ fn main() -> Result<(), std::io::Error> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
         eprintln!("Usage: foe-read <slave-position> <foe-name>");
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(std::io::Error::other(
             "Not enough arguments",
         ));
     }
     let slave_idx: ethercat::SlavePos = args[1]
         .parse::<u16>()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+        .map_err(std::io::Error::other)?
         .into();
     let foe_name = &args[2];
     let res = master.foe_read(slave_idx, foe_name)?;

@@ -265,7 +265,11 @@ impl Master {
         })
     }
 
-    pub fn configure_slave(&mut self, addr: SlaveAddr, expected: SlaveId) -> Result<SlaveConfig<'_>> {
+    pub fn configure_slave(
+        &mut self,
+        addr: SlaveAddr,
+        expected: SlaveId,
+    ) -> Result<SlaveConfig<'_>> {
         log::debug!("Configure slave {:?}", addr);
         let mut data = ec::ec_ioctl_config_t::default();
         let (alias, pos) = addr.as_pair();
