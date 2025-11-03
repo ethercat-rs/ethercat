@@ -155,8 +155,7 @@ pub fn init_master(
         let cfg_info = master.get_config_info(cfg_index)?;
         log::info!("Config info: {:#?}", cfg_info);
         if cfg_info.slave_position.is_none() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 "Unable to configure slave",
             ));
         }

@@ -30,7 +30,7 @@ Bindings have been pregenerated for the tag `1.6.1` - if you activate the
 feature `pregenerated-bindings`, you don't need the master code to build, but
 the kernel modules must match that revision.
 
-The minimum tested Rust version is 1.63.0.
+The minimum tested Rust version is 1.71.0.
 
 # Licensing
 

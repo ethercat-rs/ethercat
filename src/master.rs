@@ -81,7 +81,7 @@ impl Master {
         Ok((ioctl!(self, ec::ioctl::CREATE_DOMAIN)? as usize).into())
     }
 
-    pub const fn domain(&self, idx: DomainIdx) -> Domain {
+    pub const fn domain(&self, idx: DomainIdx) -> Domain<'_> {
         Domain::new(idx, self)
     }
 
@@ -265,7 +265,11 @@ impl Master {
         })
     }
 
-    pub fn configure_slave(&mut self, addr: SlaveAddr, expected: SlaveId) -> Result<SlaveConfig> {
+    pub fn configure_slave(
+        &mut self,
+        addr: SlaveAddr,
+        expected: SlaveId,
+    ) -> Result<SlaveConfig<'_>> {
         log::debug!("Configure slave {:?}", addr);
         let mut data = ec::ec_ioctl_config_t::default();
         let (alias, pos) = addr.as_pair();
